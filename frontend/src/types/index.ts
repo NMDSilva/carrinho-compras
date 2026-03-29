@@ -1,3 +1,8 @@
+export interface UserRef {
+  id: number
+  name: string
+}
+
 export interface Product {
   id: number
   name: string
@@ -8,6 +13,8 @@ export interface Product {
   updatedAt: string
   _count?: { prices: number }
   prices?: PriceRecord[]
+  createdBy?: UserRef | null
+  updatedBy?: UserRef | null
 }
 
 export interface Supermarket {
@@ -17,6 +24,8 @@ export interface Supermarket {
   createdAt: string
   updatedAt: string
   _count?: { prices: number }
+  createdBy?: UserRef | null
+  updatedBy?: UserRef | null
 }
 
 export interface PriceRecord {
@@ -30,6 +39,8 @@ export interface PriceRecord {
   createdAt: string
   product?: Product
   supermarket?: Supermarket
+  createdBy?: UserRef | null
+  updatedBy?: UserRef | null
 }
 
 export interface DashboardStats {

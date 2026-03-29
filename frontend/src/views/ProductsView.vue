@@ -141,12 +141,13 @@ function handleSearch() {
             <th class="text-left px-6 py-3 font-medium text-gray-500">Unidade</th>
             <th class="text-left px-6 py-3 font-medium text-gray-500">Categoria</th>
             <th class="text-right px-6 py-3 font-medium text-gray-500">Preços</th>
+            <th class="text-left px-6 py-3 font-medium text-gray-500">Registado por</th>
             <th class="px-6 py-3"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
           <tr v-if="products.length === 0">
-            <td colspan="6" class="text-center py-12 text-gray-400">Nenhum produto encontrado</td>
+            <td colspan="7" class="text-center py-12 text-gray-400">Nenhum produto encontrado</td>
           </tr>
           <tr v-for="product in products" :key="product.id" class="hover:bg-gray-50 transition-colors">
             <td class="px-6 py-4 font-medium text-gray-900">{{ product.name }}</td>
@@ -156,6 +157,15 @@ function handleSearch() {
             </td>
             <td class="px-6 py-4 text-gray-500">{{ product.category ?? '—' }}</td>
             <td class="px-6 py-4 text-right text-gray-500">{{ product._count?.prices ?? 0 }}</td>
+            <td class="px-6 py-4">
+              <div v-if="product.createdBy" class="text-xs">
+                <span class="text-gray-700 font-medium">{{ product.createdBy.name }}</span>
+                <span v-if="product.updatedBy && product.updatedBy.id !== product.createdBy.id" class="text-gray-400 block">
+                  editado por {{ product.updatedBy.name }}
+                </span>
+              </div>
+              <span v-else class="text-gray-300 text-xs">—</span>
+            </td>
             <td class="px-6 py-4">
               <div class="flex items-center justify-end gap-2">
                 <button @click="openEdit(product)" class="btn-secondary btn-sm">Editar</button>

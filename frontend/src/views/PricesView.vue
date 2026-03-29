@@ -168,12 +168,13 @@ function formatDate(date: string) {
             <th class="text-right px-6 py-3 font-medium text-gray-500">Qtd.</th>
             <th class="text-left px-6 py-3 font-medium text-gray-500">Data</th>
             <th class="text-left px-6 py-3 font-medium text-gray-500">Notas</th>
+            <th class="text-left px-6 py-3 font-medium text-gray-500">Utilizador</th>
             <th class="px-6 py-3"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
           <tr v-if="prices.length === 0">
-            <td colspan="7" class="text-center py-12 text-gray-400">Nenhum registo encontrado</td>
+            <td colspan="8" class="text-center py-12 text-gray-400">Nenhum registo encontrado</td>
           </tr>
           <tr v-for="price in prices" :key="price.id" class="hover:bg-gray-50 transition-colors">
             <td class="px-6 py-4">
@@ -185,6 +186,15 @@ function formatDate(date: string) {
             <td class="px-6 py-4 text-right text-gray-500">{{ price.quantity }}</td>
             <td class="px-6 py-4 text-gray-500">{{ formatDate(price.date) }}</td>
             <td class="px-6 py-4 text-gray-400 text-xs max-w-32 truncate">{{ price.notes ?? '—' }}</td>
+            <td class="px-6 py-4">
+              <div v-if="price.createdBy" class="text-xs">
+                <span class="text-gray-700 font-medium">{{ price.createdBy.name }}</span>
+                <span v-if="price.updatedBy && price.updatedBy.id !== price.createdBy.id" class="text-gray-400 block">
+                  editado por {{ price.updatedBy.name }}
+                </span>
+              </div>
+              <span v-else class="text-gray-300 text-xs">—</span>
+            </td>
             <td class="px-6 py-4">
               <div class="flex items-center justify-end gap-2">
                 <button @click="openEdit(price)" class="btn-secondary btn-sm">Editar</button>

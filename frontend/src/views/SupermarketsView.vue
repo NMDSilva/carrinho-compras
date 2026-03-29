@@ -106,6 +106,12 @@ async function deleteSupermarket(s: Supermarket) {
             <p class="font-semibold text-gray-900">{{ s.name }}</p>
             <p v-if="s.location" class="text-sm text-gray-500 mt-0.5">{{ s.location }}</p>
             <p class="text-xs text-gray-400 mt-1">{{ s._count?.prices ?? 0 }} preços registados</p>
+            <div v-if="s.createdBy" class="text-xs text-gray-400 mt-1">
+              por <span class="text-gray-600 font-medium">{{ s.createdBy.name }}</span>
+              <template v-if="s.updatedBy && s.updatedBy.id !== s.createdBy.id">
+                · editado por <span class="text-gray-600 font-medium">{{ s.updatedBy.name }}</span>
+              </template>
+            </div>
           </div>
         </div>
         <div class="flex flex-col gap-2 flex-shrink-0">

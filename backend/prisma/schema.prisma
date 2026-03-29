@@ -8,34 +8,48 @@ datasource db {
 }
 
 model Product {
-  id        Int           @id @default(autoincrement())
-  name      String
-  brand     String?
-  unit      String        // ex: kg, g, L, ml, un
-  category  String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  prices    PriceRecord[]
+  id          Int           @id @default(autoincrement())
+  name        String
+  brand       String?
+  unit        String
+  category    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdById Int?
+  updatedById Int?
+  prices      PriceRecord[]
+  createdBy   User?         @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?         @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
 
   @@unique([name, brand, unit])
 }
 
 model Supermarket {
-  id        Int           @id @default(autoincrement())
-  name      String        @unique
-  location  String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  prices    PriceRecord[]
+  id          Int           @id @default(autoincrement())
+  name        String        @unique
+  location    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdById Int?
+  updatedById Int?
+  prices      PriceRecord[]
+  createdBy   User?         @relation("SupermarketCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?         @relation("SupermarketUpdatedBy", fields: [updatedById], references: [id])
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  Int           @id @default(autoincrement())
+  email               String        @unique
+  password            String
+  name                String
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  createdProducts     Product[]     @relation("ProductCreatedBy")
+  updatedProducts     Product[]     @relation("ProductUpdatedBy")
+  createdSupermarkets Supermarket[] @relation("SupermarketCreatedBy")
+  updatedSupermarkets Supermarket[] @relation("SupermarketUpdatedBy")
+  createdPrices       PriceRecord[] @relation("PriceCreatedBy")
+  updatedPrices       PriceRecord[] @relation("PriceUpdatedBy")
 }
 
 model PriceRecord {
@@ -47,8 +61,12 @@ model PriceRecord {
   date          DateTime    @default(now())
   notes         String?
   createdAt     DateTime    @default(now())
+  createdById   Int?
+  updatedById   Int?
   product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   supermarket   Supermarket @relation(fields: [supermarketId], references: [id], onDelete: Cascade)
+  createdBy     User?       @relation("PriceCreatedBy", fields: [createdById], references: [id])
+  updatedBy     User?       @relation("PriceUpdatedBy", fields: [updatedById], references: [id])
 
   @@index([productId])
   @@index([supermarketId])

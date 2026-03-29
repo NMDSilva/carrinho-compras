@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { z } from 'zod'
 import prisma from '../lib/prisma'
+import type { AuthRequest } from '../middleware/auth.middleware'
 
 const priceRecordSchema = z.object({
   productId: z.number().int().positive(),
@@ -10,6 +11,8 @@ const priceRecordSchema = z.object({
   date: z.string().datetime().optional(),
   notes: z.string().nullable().optional(),
 })
+
+const userSelect = { select: { id: true, name: true } }
 
 export async function getPrices(req: Request, res: Response, next: NextFunction) {
   try {
@@ -22,6 +25,8 @@ export async function getPrices(req: Request, res: Response, next: NextFunction)
       include: {
         product: true,
         supermarket: true,
+        createdBy: userSelect,
+        updatedBy: userSelect,
       },
       orderBy: { date: 'desc' },
       take: Number(limit),
@@ -42,12 +47,15 @@ export async function getPrices(req: Request, res: Response, next: NextFunction)
 export async function createPrice(req: Request, res: Response, next: NextFunction) {
   try {
     const data = priceRecordSchema.parse(req.body)
+    const userId = (req as AuthRequest).userId
     const price = await prisma.priceRecord.create({
       data: {
         ...data,
         date: data.date ? new Date(data.date) : new Date(),
+        createdById: userId,
+        updatedById: userId,
       },
-      include: { product: true, supermarket: true },
+      include: { product: true, supermarket: true, createdBy: userSelect, updatedBy: userSelect },
     })
     res.status(201).json(price)
   } catch (error) {
@@ -58,13 +66,15 @@ export async function createPrice(req: Request, res: Response, next: NextFunctio
 export async function updatePrice(req: Request, res: Response, next: NextFunction) {
   try {
     const data = priceRecordSchema.partial().parse(req.body)
+    const userId = (req as AuthRequest).userId
     const price = await prisma.priceRecord.update({
       where: { id: Number(req.params.id) },
       data: {
         ...data,
         ...(data.date ? { date: new Date(data.date) } : {}),
+        updatedById: userId,
       },
-      include: { product: true, supermarket: true },
+      include: { product: true, supermarket: true, createdBy: userSelect, updatedBy: userSelect },
     })
     res.json(price)
   } catch (error) {
@@ -91,11 +101,10 @@ export async function compareProductPrices(req: Request, res: Response, next: Ne
 
     const allPrices = await prisma.priceRecord.findMany({
       where: { productId },
-      include: { supermarket: true },
+      include: { supermarket: true, createdBy: userSelect },
       orderBy: { date: 'desc' },
     })
 
-    // Último registo por supermercado
     const bySuper = new Map<number, (typeof allPrices)[0]>()
     for (const p of allPrices) {
       if (!bySuper.has(p.supermarketId)) {
@@ -104,7 +113,6 @@ export async function compareProductPrices(req: Request, res: Response, next: Ne
     }
 
     const result = Array.from(bySuper.values()).sort((a, b) => a.price - b.price)
-
     res.json({ product, prices: result })
   } catch (error) {
     next(error)
@@ -117,13 +125,9 @@ export async function getPriceHistory(req: Request, res: Response, next: NextFun
     const productId = Number(req.params.productId)
     const { supermarketIds } = req.query
 
-    const supermarketFilter =
-      supermarketIds
-        ? String(supermarketIds)
-            .split(',')
-            .map(Number)
-            .filter((n) => !isNaN(n))
-        : undefined
+    const supermarketFilter = supermarketIds
+      ? String(supermarketIds).split(',').map(Number).filter((n) => !isNaN(n))
+      : undefined
 
     const product = await prisma.product.findUnique({ where: { id: productId } })
     if (!product) return res.status(404).json({ error: 'Produto não encontrado' })
@@ -137,7 +141,6 @@ export async function getPriceHistory(req: Request, res: Response, next: NextFun
       orderBy: { date: 'asc' },
     })
 
-    // Agrupar por supermercado para facilitar charting no frontend
     const grouped: Record<string, { supermarket: { id: number; name: string }; records: { date: string; price: number }[] }> = {}
     for (const record of history) {
       const key = String(record.supermarketId)
@@ -147,10 +150,7 @@ export async function getPriceHistory(req: Request, res: Response, next: NextFun
           records: [],
         }
       }
-      grouped[key].records.push({
-        date: record.date.toISOString(),
-        price: record.price,
-      })
+      grouped[key].records.push({ date: record.date.toISOString(), price: record.price })
     }
 
     res.json({ product, history: Object.values(grouped) })
@@ -160,20 +160,19 @@ export async function getPriceHistory(req: Request, res: Response, next: NextFun
 }
 
 // Stats para o dashboard
-export async function getDashboardStats(req: Request, res: Response, next: NextFunction) {
+export async function getDashboardStats(_req: Request, res: Response, next: NextFunction) {
   try {
     const [totalProducts, totalSupermarkets, totalPrices, recentPrices] = await Promise.all([
       prisma.product.count(),
       prisma.supermarket.count(),
       prisma.priceRecord.count(),
       prisma.priceRecord.findMany({
-        include: { product: true, supermarket: true },
+        include: { product: true, supermarket: true, createdBy: userSelect },
         orderBy: { createdAt: 'desc' },
         take: 5,
       }),
     ])
 
-    // Produto mais barato por categoria (menor preço registado recentemente)
     const cheapestByProduct = await prisma.$queryRaw<
       { productId: number; productName: string; minPrice: number; supermarketName: string; date: string }[]
     >`
