@@ -6,13 +6,14 @@ import {
   updateSupermarket,
   deleteSupermarket,
 } from '../controllers/supermarkets.controller'
+import { requireAuth } from '../middleware/auth.middleware'
 
 const router = Router()
 
 router.get('/', getSupermarkets)
 router.get('/:id', getSupermarket)
-router.post('/', createSupermarket)
-router.put('/:id', updateSupermarket)
-router.delete('/:id', deleteSupermarket)
+router.post('/', requireAuth, createSupermarket)
+router.put('/:id', requireAuth, updateSupermarket)
+router.delete('/:id', requireAuth, deleteSupermarket)
 
 export default router

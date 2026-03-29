@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { RouterView, RouterLink, useRoute } from 'vue-router'
+import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
 const mobileMenuOpen = ref(false)
 
 const navItems = [
@@ -12,10 +15,18 @@ const navItems = [
   { to: '/precos', label: 'Preços', icon: 'tag' },
   { to: '/comparar', label: 'Comparar', icon: 'scale' },
 ]
+
+function logout() {
+  auth.logout()
+  router.push('/login')
+}
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <!-- Página de login: sem sidebar -->
+  <RouterView v-if="route.name === 'login'" />
+
+  <div v-else class="min-h-screen bg-gray-50">
     <!-- Sidebar (desktop) -->
     <aside class="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
       <div class="flex flex-col flex-1 min-h-0 bg-white border-r border-gray-200">
@@ -69,6 +80,24 @@ const navItems = [
             {{ item.label }}
           </RouterLink>
         </nav>
+
+        <!-- User info + logout (sidebar) -->
+        <div v-if="auth.user" class="px-4 py-4 border-t border-gray-100">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <span class="text-brand-700 font-semibold text-sm">{{ auth.user.name.charAt(0).toUpperCase() }}</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-gray-900 truncate">{{ auth.user.name }}</p>
+              <p class="text-xs text-gray-400 truncate">{{ auth.user.email }}</p>
+            </div>
+            <button @click="logout" title="Sair" class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
     </aside>
 
@@ -108,6 +137,10 @@ const navItems = [
         >
           {{ item.label }}
         </RouterLink>
+        <div v-if="auth.user" class="pt-2 mt-2 border-t border-gray-100 flex items-center justify-between">
+          <span class="text-xs text-gray-400">{{ auth.user.name }}</span>
+          <button @click="logout" class="text-xs text-red-500 font-medium hover:underline">Sair</button>
+        </div>
       </div>
     </div>
 
@@ -119,3 +152,4 @@ const navItems = [
     </main>
   </div>
 </template>
+

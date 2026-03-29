@@ -7,14 +7,15 @@ import {
   updateProduct,
   deleteProduct,
 } from '../controllers/products.controller'
+import { requireAuth } from '../middleware/auth.middleware'
 
 const router = Router()
 
 router.get('/categories', getCategories)
 router.get('/', getProducts)
 router.get('/:id', getProduct)
-router.post('/', createProduct)
-router.put('/:id', updateProduct)
-router.delete('/:id', deleteProduct)
+router.post('/', requireAuth, createProduct)
+router.put('/:id', requireAuth, updateProduct)
+router.delete('/:id', requireAuth, deleteProduct)
 
 export default router

@@ -11,6 +11,25 @@ import type {
 
 const api = axios.create({ baseURL: '/api' })
 
+// Injeta o token JWT em todos os pedidos autenticados
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+// Se o servidor devolver 401, limpa o token
+api.interceptors.response.use(
+  (r) => r,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
 // Produtos
 export const productsApi = {
   getAll: (params?: { search?: string; category?: string }) =>

@@ -4,6 +4,7 @@ import cors from 'cors'
 import productsRouter from './routes/products.routes'
 import supermarketsRouter from './routes/supermarkets.routes'
 import pricesRouter from './routes/prices.routes'
+import authRouter from './routes/auth.routes'
 import { errorHandler } from './middleware/errorHandler'
 
 const app = express()
@@ -14,6 +15,7 @@ app.use(express.json())
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }))
 
+app.use('/api/auth', authRouter)
 app.use('/api/products', productsRouter)
 app.use('/api/supermarkets', supermarketsRouter)
 app.use('/api/prices', pricesRouter)
