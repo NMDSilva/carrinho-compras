@@ -2,18 +2,23 @@
 import { ref, onMounted } from 'vue'
 import { productsApi } from '@/api'
 import type { Product } from '@/types'
+import { FormDialog, ConfirmDialog } from '@/components/dialogs'
 
 const products = ref<Product[]>([])
 const categories = ref<string[]>([])
 const loading = ref(true)
 const search = ref('')
 const filterCategory = ref('')
+
 const showModal = ref(false)
 const editingProduct = ref<Product | null>(null)
 const saving = ref(false)
 const formError = ref('')
-
 const form = ref({ name: '', brand: '', unit: 'un', category: '' })
+
+const deleteTarget = ref<Product | null>(null)
+const showDeleteConfirm = ref(false)
+const deleting = ref(false)
 
 const UNITS = ['un', 'kg', 'g', 'L', 'ml', 'cx', 'pac', 'dz']
 
@@ -87,14 +92,22 @@ async function saveProduct() {
   }
 }
 
-async function deleteProduct(product: Product) {
-  if (!confirm(`Eliminar "${product.name}"? Todos os preços associados serão removidos.`)) return
-  await productsApi.delete(product.id)
-  await loadProducts()
+function openDeleteConfirm(product: Product) {
+  deleteTarget.value = product
+  showDeleteConfirm.value = true
 }
 
-function handleSearch() {
-  loadProducts()
+async function confirmDelete() {
+  if (!deleteTarget.value) return
+  deleting.value = true
+  try {
+    await productsApi.delete(deleteTarget.value.id)
+    showDeleteConfirm.value = false
+    deleteTarget.value = null
+    await loadProducts()
+  } finally {
+    deleting.value = false
+  }
 }
 </script>
 
@@ -117,12 +130,12 @@ function handleSearch() {
     <div class="flex flex-col sm:flex-row gap-3 mb-6">
       <input
         v-model="search"
-        @input="handleSearch"
+        @input="loadProducts"
         type="text"
         placeholder="Pesquisar produto..."
         class="input max-w-xs"
       />
-      <select v-model="filterCategory" @change="handleSearch" class="input max-w-xs">
+      <select v-model="filterCategory" @change="loadProducts" class="input max-w-xs">
         <option value="">Todas as categorias</option>
         <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
       </select>
@@ -152,9 +165,7 @@ function handleSearch() {
           <tr v-for="product in products" :key="product.id" class="hover:bg-gray-50 transition-colors">
             <td class="px-6 py-4 font-medium text-gray-900">{{ product.name }}</td>
             <td class="px-6 py-4 text-gray-500">{{ product.brand ?? '—' }}</td>
-            <td class="px-6 py-4">
-              <span class="badge-blue">{{ product.unit }}</span>
-            </td>
+            <td class="px-6 py-4"><span class="badge-blue">{{ product.unit }}</span></td>
             <td class="px-6 py-4 text-gray-500">{{ product.category ?? '—' }}</td>
             <td class="px-6 py-4 text-right text-gray-500">{{ product._count?.prices ?? 0 }}</td>
             <td class="px-6 py-4">
@@ -169,7 +180,7 @@ function handleSearch() {
             <td class="px-6 py-4">
               <div class="flex items-center justify-end gap-2">
                 <button @click="openEdit(product)" class="btn-secondary btn-sm">Editar</button>
-                <button @click="deleteProduct(product)" class="btn-danger btn-sm">Eliminar</button>
+                <button @click="openDeleteConfirm(product)" class="btn-danger btn-sm">Eliminar</button>
               </div>
             </td>
           </tr>
@@ -177,51 +188,48 @@ function handleSearch() {
       </table>
     </div>
 
-    <!-- Modal -->
-    <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="fixed inset-0 bg-black/40" @click="showModal = false"></div>
-        <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-5">
-            {{ editingProduct ? 'Editar Produto' : 'Novo Produto' }}
-          </h2>
-
-          <div class="space-y-4">
-            <div>
-              <label class="label">Nome *</label>
-              <input v-model="form.name" type="text" class="input" placeholder="ex: Leite Meio-Gordo" />
-            </div>
-            <div>
-              <label class="label">Marca</label>
-              <input v-model="form.brand" type="text" class="input" placeholder="ex: Mimosa" />
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="label">Unidade *</label>
-                <select v-model="form.unit" class="input">
-                  <option v-for="unit in UNITS" :key="unit" :value="unit">{{ unit }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="label">Categoria</label>
-                <input v-model="form.category" type="text" list="cats" class="input" placeholder="ex: Lacticínios" />
-                <datalist id="cats">
-                  <option v-for="cat in categories" :key="cat" :value="cat" />
-                </datalist>
-              </div>
-            </div>
+    <FormDialog
+      v-model="showModal"
+      :title="editingProduct ? 'Editar Produto' : 'Novo Produto'"
+      :loading="saving"
+      :error="formError"
+      @submit="saveProduct"
+    >
+      <div class="space-y-4">
+        <div>
+          <label class="label">Nome *</label>
+          <input v-model="form.name" type="text" class="input" placeholder="ex: Leite Meio-Gordo" />
+        </div>
+        <div>
+          <label class="label">Marca</label>
+          <input v-model="form.brand" type="text" class="input" placeholder="ex: Mimosa" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="label">Unidade *</label>
+            <select v-model="form.unit" class="input">
+              <option v-for="unit in UNITS" :key="unit" :value="unit">{{ unit }}</option>
+            </select>
           </div>
-
-          <p v-if="formError" class="mt-3 text-sm text-red-600">{{ formError }}</p>
-
-          <div class="flex justify-end gap-3 mt-6">
-            <button class="btn-secondary" @click="showModal = false">Cancelar</button>
-            <button class="btn-primary" :disabled="saving" @click="saveProduct">
-              {{ saving ? 'A guardar…' : 'Guardar' }}
-            </button>
+          <div>
+            <label class="label">Categoria</label>
+            <input v-model="form.category" type="text" list="cats" class="input" placeholder="ex: Lacticínios" />
+            <datalist id="cats">
+              <option v-for="cat in categories" :key="cat" :value="cat" />
+            </datalist>
           </div>
         </div>
       </div>
-    </Teleport>
+    </FormDialog>
+
+    <ConfirmDialog
+      v-model="showDeleteConfirm"
+      title="Eliminar produto"
+      :message="`Eliminar &quot;${deleteTarget?.name}&quot;? Todos os preços associados serão removidos.`"
+      confirm-label="Eliminar"
+      :danger="true"
+      :loading="deleting"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>

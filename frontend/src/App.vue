@@ -14,6 +14,11 @@ const navItems = [
   { to: '/supermercados', label: 'Supermercados', icon: 'store' },
   { to: '/precos', label: 'Preços', icon: 'tag' },
   { to: '/comparar', label: 'Comparar', icon: 'scale' },
+  { to: '/importar', label: 'Importar Fatura', icon: 'upload' },
+]
+
+const adminItems = [
+  { to: '/admin/utilizadores', label: 'Utilizadores', icon: 'users' },
 ]
 
 function logout() {
@@ -47,7 +52,7 @@ function logout() {
         </div>
 
         <!-- Nav -->
-        <nav class="flex-1 px-4 py-6 space-y-1">
+        <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           <RouterLink
             v-for="item in navItems"
             :key="item.to"
@@ -77,20 +82,48 @@ function logout() {
             <svg v-if="item.icon === 'scale'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
             </svg>
+            <!-- Upload icon -->
+            <svg v-if="item.icon === 'upload'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
             {{ item.label }}
           </RouterLink>
+
+          <!-- Secção Admin -->
+          <template v-if="auth.isAdmin">
+            <div class="pt-4 pb-1">
+              <p class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Administração</p>
+            </div>
+            <RouterLink
+              v-for="item in adminItems"
+              :key="item.to"
+              :to="item.to"
+              class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              :class="route.path === item.to
+                ? 'bg-brand-50 text-brand-700'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+            >
+              <!-- Users icon -->
+              <svg v-if="item.icon === 'users'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              {{ item.label }}
+            </RouterLink>
+          </template>
         </nav>
 
         <!-- User info + logout (sidebar) -->
         <div v-if="auth.user" class="px-4 py-4 border-t border-gray-100">
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span class="text-brand-700 font-semibold text-sm">{{ auth.user.name.charAt(0).toUpperCase() }}</span>
-            </div>
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-gray-900 truncate">{{ auth.user.name }}</p>
-              <p class="text-xs text-gray-400 truncate">{{ auth.user.email }}</p>
-            </div>
+            <RouterLink to="/perfil" class="flex items-center gap-3 min-w-0 flex-1 group">
+              <div class="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-brand-200 transition-colors">
+                <span class="text-brand-700 font-semibold text-sm">{{ auth.user.name.charAt(0).toUpperCase() }}</span>
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-gray-900 truncate group-hover:text-brand-700 transition-colors">{{ auth.user.name }}</p>
+                <p class="text-xs text-gray-400 truncate">{{ auth.user.email }}</p>
+              </div>
+            </RouterLink>
             <button @click="logout" title="Sair" class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -137,6 +170,21 @@ function logout() {
         >
           {{ item.label }}
         </RouterLink>
+        <template v-if="auth.isAdmin">
+          <p class="px-3 pt-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Administração</p>
+          <RouterLink
+            v-for="item in adminItems"
+            :key="item.to"
+            :to="item.to"
+            @click="mobileMenuOpen = false"
+            class="block px-3 py-2 rounded-lg text-sm font-medium"
+            :class="route.path === item.to
+              ? 'bg-brand-50 text-brand-700'
+              : 'text-gray-600 hover:bg-gray-50'"
+          >
+            {{ item.label }}
+          </RouterLink>
+        </template>
         <div v-if="auth.user" class="pt-2 mt-2 border-t border-gray-100 flex items-center justify-between">
           <span class="text-xs text-gray-400">{{ auth.user.name }}</span>
           <button @click="logout" class="text-xs text-red-500 font-medium hover:underline">Sair</button>

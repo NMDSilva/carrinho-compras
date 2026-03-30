@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { pricesApi, productsApi, supermarketsApi } from '@/api'
 import type { PriceRecord, Product, Supermarket } from '@/types'
+import { FormDialog, ConfirmDialog } from '@/components/dialogs'
 
 const prices = ref<PriceRecord[]>([])
 const products = ref<Product[]>([])
@@ -18,6 +19,10 @@ const showModal = ref(false)
 const saving = ref(false)
 const formError = ref('')
 const editingPrice = ref<PriceRecord | null>(null)
+
+const deleteTarget = ref<PriceRecord | null>(null)
+const showDeleteConfirm = ref(false)
+const deleting = ref(false)
 
 const today = new Date().toISOString().substring(0, 10)
 const form = ref({
@@ -107,10 +112,22 @@ async function save() {
   }
 }
 
-async function deletePrice(price: PriceRecord) {
-  if (!confirm('Eliminar este registo de preço?')) return
-  await pricesApi.delete(price.id)
-  await loadPrices()
+function openDeleteConfirm(price: PriceRecord) {
+  deleteTarget.value = price
+  showDeleteConfirm.value = true
+}
+
+async function confirmDelete() {
+  if (!deleteTarget.value) return
+  deleting.value = true
+  try {
+    await pricesApi.delete(deleteTarget.value.id)
+    showDeleteConfirm.value = false
+    deleteTarget.value = null
+    await loadPrices()
+  } finally {
+    deleting.value = false
+  }
 }
 
 function applyFilters() {
@@ -198,7 +215,7 @@ function formatDate(date: string) {
             <td class="px-6 py-4">
               <div class="flex items-center justify-end gap-2">
                 <button @click="openEdit(price)" class="btn-secondary btn-sm">Editar</button>
-                <button @click="deletePrice(price)" class="btn-danger btn-sm">Eliminar</button>
+                <button @click="openDeleteConfirm(price)" class="btn-danger btn-sm">Eliminar</button>
               </div>
             </td>
           </tr>
@@ -216,59 +233,60 @@ function formatDate(date: string) {
       </div>
     </div>
 
-    <!-- Modal -->
-    <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="fixed inset-0 bg-black/40" @click="showModal = false"></div>
-        <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-5">
-            {{ editingPrice ? 'Editar Preço' : 'Registar Preço' }}
-          </h2>
-          <div class="space-y-4">
-            <div>
-              <label class="label">Produto *</label>
-              <select v-model="form.productId" class="input">
-                <option value="">Selecionar produto…</option>
-                <option v-for="p in products" :key="p.id" :value="p.id">
-                  {{ p.name }}{{ p.brand ? ` (${p.brand})` : '' }} — {{ p.unit }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="label">Supermercado *</label>
-              <select v-model="form.supermarketId" class="input">
-                <option value="">Selecionar supermercado…</option>
-                <option v-for="s in supermarkets" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="label">Preço (€) *</label>
-                <input v-model="form.price" type="number" step="0.01" min="0" class="input" placeholder="0.00" />
-              </div>
-              <div>
-                <label class="label">Quantidade</label>
-                <input v-model="form.quantity" type="number" step="0.1" min="0.1" class="input" />
-              </div>
-            </div>
-            <div>
-              <label class="label">Data</label>
-              <input v-model="form.date" type="date" class="input" />
-            </div>
-            <div>
-              <label class="label">Notas</label>
-              <input v-model="form.notes" type="text" class="input" placeholder="Opcional…" />
-            </div>
+    <FormDialog
+      v-model="showModal"
+      :title="editingPrice ? 'Editar Preço' : 'Registar Preço'"
+      :loading="saving"
+      :error="formError"
+      size="lg"
+      @submit="save"
+    >
+      <div class="space-y-4">
+        <div>
+          <label class="label">Produto *</label>
+          <select v-model="form.productId" class="input">
+            <option value="">Selecionar produto…</option>
+            <option v-for="p in products" :key="p.id" :value="p.id">
+              {{ p.name }}{{ p.brand ? ` (${p.brand})` : '' }} — {{ p.unit }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Supermercado *</label>
+          <select v-model="form.supermarketId" class="input">
+            <option value="">Selecionar supermercado…</option>
+            <option v-for="s in supermarkets" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="label">Preço (€) *</label>
+            <input v-model="form.price" type="number" step="0.01" min="0" class="input" placeholder="0.00" />
           </div>
-          <p v-if="formError" class="mt-3 text-sm text-red-600">{{ formError }}</p>
-          <div class="flex justify-end gap-3 mt-6">
-            <button class="btn-secondary" @click="showModal = false">Cancelar</button>
-            <button class="btn-primary" :disabled="saving" @click="save">
-              {{ saving ? 'A guardar…' : 'Guardar' }}
-            </button>
+          <div>
+            <label class="label">Quantidade</label>
+            <input v-model="form.quantity" type="number" step="0.1" min="0.1" class="input" />
           </div>
         </div>
+        <div>
+          <label class="label">Data</label>
+          <input v-model="form.date" type="date" class="input" />
+        </div>
+        <div>
+          <label class="label">Notas</label>
+          <input v-model="form.notes" type="text" class="input" placeholder="Opcional…" />
+        </div>
       </div>
-    </Teleport>
+    </FormDialog>
+
+    <ConfirmDialog
+      v-model="showDeleteConfirm"
+      title="Eliminar registo de preço"
+      message="Tem a certeza que quer eliminar este registo de preço?"
+      confirm-label="Eliminar"
+      :danger="true"
+      :loading="deleting"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>

@@ -2,14 +2,20 @@
 import { ref, onMounted } from 'vue'
 import { supermarketsApi } from '@/api'
 import type { Supermarket } from '@/types'
+import { FormDialog, ConfirmDialog } from '@/components/dialogs'
 
 const supermarkets = ref<Supermarket[]>([])
 const loading = ref(true)
+
 const showModal = ref(false)
 const editingItem = ref<Supermarket | null>(null)
 const saving = ref(false)
 const formError = ref('')
 const form = ref({ name: '', location: '' })
+
+const deleteTarget = ref<Supermarket | null>(null)
+const showDeleteConfirm = ref(false)
+const deleting = ref(false)
 
 async function loadSupermarkets() {
   loading.value = true
@@ -60,10 +66,22 @@ async function save() {
   }
 }
 
-async function deleteSupermarket(s: Supermarket) {
-  if (!confirm(`Eliminar "${s.name}"? Todos os preços associados serão removidos.`)) return
-  await supermarketsApi.delete(s.id)
-  await loadSupermarkets()
+function openDeleteConfirm(s: Supermarket) {
+  deleteTarget.value = s
+  showDeleteConfirm.value = true
+}
+
+async function confirmDelete() {
+  if (!deleteTarget.value) return
+  deleting.value = true
+  try {
+    await supermarketsApi.delete(deleteTarget.value.id)
+    showDeleteConfirm.value = false
+    deleteTarget.value = null
+    await loadSupermarkets()
+  } finally {
+    deleting.value = false
+  }
 }
 </script>
 
@@ -116,38 +134,38 @@ async function deleteSupermarket(s: Supermarket) {
         </div>
         <div class="flex flex-col gap-2 flex-shrink-0">
           <button @click="openEdit(s)" class="btn-secondary btn-sm">Editar</button>
-          <button @click="deleteSupermarket(s)" class="btn-danger btn-sm">Eliminar</button>
+          <button @click="openDeleteConfirm(s)" class="btn-danger btn-sm">Eliminar</button>
         </div>
       </div>
     </div>
 
-    <!-- Modal -->
-    <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="fixed inset-0 bg-black/40" @click="showModal = false"></div>
-        <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-5">
-            {{ editingItem ? 'Editar Supermercado' : 'Novo Supermercado' }}
-          </h2>
-          <div class="space-y-4">
-            <div>
-              <label class="label">Nome *</label>
-              <input v-model="form.name" type="text" class="input" placeholder="ex: Continente" />
-            </div>
-            <div>
-              <label class="label">Localização</label>
-              <input v-model="form.location" type="text" class="input" placeholder="ex: Lisboa, Rua X" />
-            </div>
-          </div>
-          <p v-if="formError" class="mt-3 text-sm text-red-600">{{ formError }}</p>
-          <div class="flex justify-end gap-3 mt-6">
-            <button class="btn-secondary" @click="showModal = false">Cancelar</button>
-            <button class="btn-primary" :disabled="saving" @click="save">
-              {{ saving ? 'A guardar…' : 'Guardar' }}
-            </button>
-          </div>
+    <FormDialog
+      v-model="showModal"
+      :title="editingItem ? 'Editar Supermercado' : 'Novo Supermercado'"
+      :loading="saving"
+      :error="formError"
+      @submit="save"
+    >
+      <div class="space-y-4">
+        <div>
+          <label class="label">Nome *</label>
+          <input v-model="form.name" type="text" class="input" placeholder="ex: Continente" />
+        </div>
+        <div>
+          <label class="label">Localização</label>
+          <input v-model="form.location" type="text" class="input" placeholder="ex: Lisboa, Rua X" />
         </div>
       </div>
-    </Teleport>
+    </FormDialog>
+
+    <ConfirmDialog
+      v-model="showDeleteConfirm"
+      title="Eliminar supermercado"
+      :message="`Eliminar &quot;${deleteTarget?.name}&quot;? Todos os preços associados serão removidos.`"
+      confirm-label="Eliminar"
+      :danger="true"
+      :loading="deleting"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>
