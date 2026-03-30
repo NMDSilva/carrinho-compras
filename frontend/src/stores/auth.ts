@@ -6,6 +6,7 @@ interface AuthUser {
   id: number
   name: string
   email: string
+  role: string
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -13,6 +14,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
 
   const isAuthenticated = computed(() => !!token.value)
+  const isAdmin = computed(() => user.value?.role === 'ADMIN')
 
   function setToken(t: string) {
     token.value = t
@@ -49,9 +51,16 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = res.data.user
   }
 
+  async function updateMe(data: { name?: string; email?: string; currentPassword?: string; newPassword?: string }) {
+    const res = await axios.patch<AuthUser>('/api/auth/me', data, {
+      headers: { Authorization: `Bearer ${token.value}` },
+    })
+    user.value = res.data
+  }
+
   function logout() {
     clearAuth()
   }
 
-  return { token, user, isAuthenticated, login, register, logout, fetchMe }
+  return { token, user, isAuthenticated, isAdmin, login, register, logout, fetchMe, updateMe }
 })

@@ -31,10 +31,28 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/importar',
+      name: 'import',
+      component: () => import('@/views/ImportView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/comparar',
       name: 'compare',
       component: () => import('@/views/CompareView.vue'),
       meta: { requiresAuth: true },
+    },
+    {
+      path: '/perfil',
+      name: 'profile',
+      component: () => import('@/views/ProfileView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/utilizadores',
+      name: 'admin-users',
+      component: () => import('@/views/UsersView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
   ],
 })
@@ -49,6 +67,10 @@ router.beforeEach(async (to, _from, next) => {
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return next({ name: 'login', query: { redirect: to.fullPath } })
+  }
+
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return next({ name: 'dashboard' })
   }
 
   if (to.name === 'login' && auth.isAuthenticated) {

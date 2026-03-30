@@ -7,6 +7,9 @@ import type {
   CompareResult,
   PriceHistory,
   PaginatedPrices,
+  User,
+  ImportPreview,
+  ImportResult,
 } from '@/types'
 
 const api = axios.create({ baseURL: '/api' })
@@ -52,6 +55,38 @@ export const supermarketsApi = {
   update: (id: number, data: Partial<Omit<Supermarket, 'id' | 'createdAt' | 'updatedAt'>>) =>
     api.put<Supermarket>(`/supermarkets/${id}`, data).then((r) => r.data),
   delete: (id: number) => api.delete(`/supermarkets/${id}`),
+}
+
+// Importação de faturas
+export const importApi = {
+  preview: (file: File) => {
+    const fd = new FormData()
+    fd.append('invoice', file)
+    return api.post<ImportPreview>('/import/preview', fd).then((r) => r.data)
+  },
+  confirm: (body: {
+    date: string
+    supermarketId: number | null
+    supermarketName: string
+    supermarketLocation: string
+    items: {
+      skip: boolean
+      productId: number | null
+      productName: string
+      productUnit: string
+      productCategory: string | null
+      unitPrice: number
+      quantity: number
+    }[]
+  }) => api.post<ImportResult>('/import/confirm', body).then((r) => r.data),
+}
+
+// Admin — utilizadores
+export const usersApi = {
+  getAll: () => api.get<User[]>('/admin/users').then((r) => r.data),
+  update: (id: number, data: Partial<Pick<User, 'name' | 'email' | 'role'> & { password?: string }>) =>
+    api.patch<User>(`/admin/users/${id}`, data).then((r) => r.data),
+  delete: (id: number) => api.delete(`/admin/users/${id}`),
 }
 
 // Preços
