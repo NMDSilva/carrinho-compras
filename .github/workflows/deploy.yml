@@ -57,9 +57,10 @@ jobs:
           host: ${{ secrets.GCP_HOST }}
           username: ${{ secrets.GCP_USER }}
           key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+          command_timeout: 30m
           script: |
             cd ~/carrinho-compras/backend
-            npm ci --omit=dev
+            npm ci --omit=dev --no-audit
             npx prisma generate
             npx prisma migrate deploy
             pm2 restart carrinho-compras || pm2 start dist/server.js --name carrinho-compras
