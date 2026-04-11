@@ -31,7 +31,7 @@ jobs:
           npx prisma generate
           npm run build
       
-      - name: Criar .env na VM
+      - name: Criar .env na VM GCP
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.GCP_HOST }}
