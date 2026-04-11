@@ -58,7 +58,7 @@ jobs:
           username: ${{ secrets.GCP_USER }}
           key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
           script: |
-            which pm2 || npm install -g pm2
+            which pm2
             cd ~/carrinho-compras/backend
             npm ci --omit=dev
             npx prisma generate
