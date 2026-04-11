@@ -88,30 +88,3 @@ export interface PaginatedPrices {
   total: number
 }
 
-export interface ImportPreviewItem {
-  description: string
-  category: string
-  unitPrice: number
-  quantity: number
-  ivaCode: string
-  suggestedName: string
-  suggestedUnit: string
-  suggestedCategory: string
-  existingProductId: number | null
-  existingProductName: string | null
-}
-
-export interface ImportPreview {
-  invoiceNumber: string
-  date: string
-  supermarketName: string
-  supermarketLocation: string
-  existingSupermarketId: number | null
-  total: number
-  items: ImportPreviewItem[]
-}
-
-export interface ImportResult {
-  productsCreated: number
-  pricesCreated: number
-}

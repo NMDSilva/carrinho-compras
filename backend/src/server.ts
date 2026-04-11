@@ -6,7 +6,7 @@ import supermarketsRouter from './routes/supermarkets.routes'
 import pricesRouter from './routes/prices.routes'
 import authRouter from './routes/auth.routes'
 import adminRouter from './routes/admin.routes'
-import importRouter from './routes/import.routes'
+import comprasRouter from './routes/compras.routes'
 import { errorHandler } from './middleware/errorHandler'
 
 const app = express()
@@ -19,7 +19,7 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Da
 
 app.use('/api/auth', authRouter)
 app.use('/api/admin', adminRouter)
-app.use('/api/import', importRouter)
+app.use('/api/compras', comprasRouter)
 app.use('/api/products', productsRouter)
 app.use('/api/supermarkets', supermarketsRouter)
 app.use('/api/prices', pricesRouter)

@@ -14,7 +14,6 @@ const navItems = [
   { to: '/supermercados', label: 'Supermercados', icon: 'store' },
   { to: '/precos', label: 'Preços', icon: 'tag' },
   { to: '/comparar', label: 'Comparar', icon: 'scale' },
-  { to: '/importar', label: 'Importar Fatura', icon: 'upload' },
 ]
 
 const adminItems = [
@@ -81,10 +80,6 @@ function logout() {
             <!-- Scale icon -->
             <svg v-if="item.icon === 'scale'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-            </svg>
-            <!-- Upload icon -->
-            <svg v-if="item.icon === 'upload'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
             {{ item.label }}
           </RouterLink>

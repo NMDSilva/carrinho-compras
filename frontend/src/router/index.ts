@@ -31,12 +31,6 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/importar',
-      name: 'import',
-      component: () => import('@/views/ImportView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
       path: '/comparar',
       name: 'compare',
       component: () => import('@/views/CompareView.vue'),
