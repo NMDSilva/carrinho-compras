@@ -28,6 +28,7 @@ jobs:
         run: |
           cd backend
           npm ci
+          npx prisma generate
           npm run build
       
       - name: Criar .env na VM
