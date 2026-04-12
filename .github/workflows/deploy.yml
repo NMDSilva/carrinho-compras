@@ -39,6 +39,8 @@ jobs:
           key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
           script: |
             mkdir -p /home/${{ secrets.GCP_USER }}/carrinho-compras/backend
+            touch /home/${{ secrets.GCP_USER }}/carrinho-compras/backend/.env
+            chmod 600 /home/${{ secrets.GCP_USER }}/carrinho-compras/backend/.env
             echo "${{ secrets.ENV_FILE }}" > /home/${{ secrets.GCP_USER }}/carrinho-compras/backend/.env
 
       - name: Copiar ficheiros para VM via rsync
