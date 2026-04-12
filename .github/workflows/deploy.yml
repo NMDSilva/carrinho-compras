@@ -51,7 +51,7 @@ jobs:
           remote_user: ${{ secrets.GCP_USER }}
           remote_key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
 
-      - name: Instalar dependências e reiniciar servidor na VM
+      - name: Instalar dependências e reiniciar servidor na VM via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.GCP_HOST }}
