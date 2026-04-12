@@ -64,5 +64,5 @@ jobs:
             npm ci --omit=dev --no-audit
             npx prisma generate
             npx prisma migrate deploy
-            pm2 restart carrinho-compras || pm2 start dist/server.js --name carrinho-compras
+            pm2 restart carrinho-compras || pm2 start dist/server.js --name carrinho-compras --cwd ~/carrinho-compras/backend
             pm2 save
