@@ -1,33 +1,26 @@
-import { Request, Response, NextFunction } from 'express'
-import jwt from 'jsonwebtoken'
+import { FastifyRequest, FastifyReply } from 'fastify'
 
-export interface AuthRequest extends Request {
-  userId: number
-  userRole: string
-}
-
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const header = req.headers.authorization
-  if (!header?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Autenticação necessária' })
-  }
-
-  const token = header.slice(7)
+export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET as string) as unknown as { sub: string | number; role: string }
-    ;(req as AuthRequest).userId = Number(payload.sub)
-    ;(req as AuthRequest).userRole = payload.role ?? 'USER'
-    next()
+    await request.jwtVerify()
   } catch {
-    return res.status(401).json({ error: 'Token inválido ou expirado' })
+    reply.status(401).send({ error: 'Autenticação necessária' })
   }
 }
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  requireAuth(req, res, () => {
-    if ((req as AuthRequest).userRole !== 'ADMIN') {
-      return res.status(403).json({ error: 'Acesso restrito a administradores' })
+export async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    await request.jwtVerify()
+    const user = request.user as { role: string }
+    if (user.role !== 'ADMIN') {
+      reply.status(403).send({ error: 'Acesso restrito a administradores' })
     }
-    next()
-  })
+  } catch {
+    reply.status(401).send({ error: 'Autenticação necessária' })
+  }
+}
+
+export function getAuthUser(request: FastifyRequest): { userId: number; userRole: string } {
+  const user = request.user as { sub: number; role: string }
+  return { userId: user.sub, userRole: user.role ?? 'USER' }
 }
