@@ -41,7 +41,7 @@ export async function registarCompra(req: Request, res: Response, next: NextFunc
 
       // Encontrar ou criar produto (correspondência case-insensitive pelo nome)
       let product = await prisma.product.findFirst({
-        where: { name: { equals: item.produto } },
+        where: { name: { equals: item.produto, mode: 'insensitive' } },
       })
       if (!product) {
         product = await prisma.product.create({
