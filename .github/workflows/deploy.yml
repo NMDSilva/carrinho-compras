@@ -53,6 +53,7 @@ jobs:
             echo "${{ secrets.ENV_FILE }}" > ~/carrinho-compras/backend/.env
             chmod 600 ~/carrinho-compras/backend/.env
             cd ~/carrinho-compras/backend
+            docker compose up -d
             npm ci --omit=dev --no-audit
             npx prisma generate
             npx prisma migrate deploy
