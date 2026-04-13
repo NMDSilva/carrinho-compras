@@ -1,16 +1,14 @@
-import { Request, Response, NextFunction } from 'express'
+import { FastifyRequest, FastifyReply } from 'fastify'
 
-export function requireApiKey(req: Request, res: Response, next: NextFunction) {
-  const key = req.headers['x-api-key']
+export async function requireApiKey(request: FastifyRequest, reply: FastifyReply) {
+  const key = request.headers['x-api-key']
   const expected = process.env.N8N_API_KEY
 
   if (!expected) {
-    return res.status(500).json({ error: 'API key não configurada no servidor' })
+    return reply.status(500).send({ error: 'API key não configurada no servidor' })
   }
 
   if (!key || key !== expected) {
-    return res.status(401).json({ error: 'API key inválida ou ausente' })
+    return reply.status(401).send({ error: 'API key inválida ou ausente' })
   }
-
-  next()
 }
