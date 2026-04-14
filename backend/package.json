@@ -24,13 +24,13 @@
     "fastify": "^5.3.2",
     "fastify-type-provider-zod": "^4.0.2",
     "pg": "^8.20.0",
+    "prisma": "^7.7.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.20.0",
-    "prisma": "^7.7.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.6.0"
   }
