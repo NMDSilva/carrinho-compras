@@ -13,7 +13,7 @@ export async function registarCompra(
   const date = new Date(`${year}-${month}-${day}T12:00:00.000Z`)
 
   const user = await prisma.user.findFirst({
-    where: { email: body.email, mode: 'insensitive' },
+    where: { email: { equals: body.email, mode: 'insensitive' } },
   })
 
   const userId = !user ? 1 : user.id
