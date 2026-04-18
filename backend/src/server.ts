@@ -4,7 +4,11 @@ import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
-import { serializerCompiler, validatorCompiler, jsonSchemaTransform } from 'fastify-type-provider-zod'
+import {
+  serializerCompiler,
+  validatorCompiler,
+  jsonSchemaTransform,
+} from 'fastify-type-provider-zod'
 import { ZodError } from 'zod'
 
 import authRoutes from './routes/auth.routes'
@@ -23,9 +27,12 @@ async function start() {
   app.setSerializerCompiler(serializerCompiler)
 
   await app.register(cors, {
-    origin: process.env.NODE_ENV === 'production'
-      ? 'https://carrinhodecompras.pt'
-      : 'http://localhost:5173',
+    origin: [
+      'https://n8n.nmsilva.eu',
+      process.env.NODE_ENV === 'production'
+        ? 'https://carrinhodecompras.pt'
+        : 'http://localhost:5173',
+    ],
   })
 
   await app.register(jwt, {
@@ -50,49 +57,72 @@ async function start() {
   })
   await app.register(swaggerUi, { routePrefix: '/docs' })
 
-  app.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      await request.jwtVerify()
-    } catch {
-      reply.status(401).send({ error: 'Autenticação necessária' })
-    }
-  })
-
-  app.decorate('authenticateAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      await request.jwtVerify()
-      const user = request.user as { role: string }
-      if (user.role !== 'ADMIN') {
-        reply.status(403).send({ error: 'Acesso restrito a administradores' })
+  app.decorate(
+    'authenticate',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        await request.jwtVerify()
+      } catch {
+        reply.status(401).send({ error: 'Autenticação necessária' })
       }
-    } catch {
-      reply.status(401).send({ error: 'Autenticação necessária' })
     }
-  })
+  )
 
-  app.setErrorHandler((error: Error & { statusCode?: number }, _request: FastifyRequest, reply: FastifyReply) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.error(`[${new Date().toISOString()}] ${error.name}: ${error.message}`)
+  app.decorate(
+    'authenticateAdmin',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        await request.jwtVerify()
+        const user = request.user as { role: string }
+        if (user.role !== 'ADMIN') {
+          reply.status(403).send({ error: 'Acesso restrito a administradores' })
+        }
+      } catch {
+        reply.status(401).send({ error: 'Autenticação necessária' })
+      }
     }
-    if (error instanceof ZodError) {
-      return reply.status(400).send({
-        error: 'Dados inválidos',
-        details: error.errors.map((e) => ({ field: e.path.join('.'), message: e.message })),
-      })
-    }
-    if (error.message?.includes('Record to update not found') || error.message?.includes('Record to delete not found')) {
-      return reply.status(404).send({ error: 'Registo não encontrado' })
-    }
-    if (error.message?.includes('Unique constraint failed')) {
-      return reply.status(409).send({ error: 'Registo já existe' })
-    }
-    if (error.statusCode) {
-      return reply.status(error.statusCode).send({ error: error.message })
-    }
-    reply.status(500).send({ error: 'Erro interno do servidor' })
-  })
+  )
 
-  app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
+  app.setErrorHandler(
+    (
+      error: Error & { statusCode?: number },
+      _request: FastifyRequest,
+      reply: FastifyReply
+    ) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.error(
+          `[${new Date().toISOString()}] ${error.name}: ${error.message}`
+        )
+      }
+      if (error instanceof ZodError) {
+        return reply.status(400).send({
+          error: 'Dados inválidos',
+          details: error.errors.map((e) => ({
+            field: e.path.join('.'),
+            message: e.message,
+          })),
+        })
+      }
+      if (
+        error.message?.includes('Record to update not found') ||
+        error.message?.includes('Record to delete not found')
+      ) {
+        return reply.status(404).send({ error: 'Registo não encontrado' })
+      }
+      if (error.message?.includes('Unique constraint failed')) {
+        return reply.status(409).send({ error: 'Registo já existe' })
+      }
+      if (error.statusCode) {
+        return reply.status(error.statusCode).send({ error: error.message })
+      }
+      reply.status(500).send({ error: 'Erro interno do servidor' })
+    }
+  )
+
+  app.get('/api/health', async () => ({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  }))
 
   await app.register(authRoutes, { prefix: '/api/auth' })
   await app.register(adminRoutes, { prefix: '/api/admin' })
