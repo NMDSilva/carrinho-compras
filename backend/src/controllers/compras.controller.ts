@@ -1,43 +1,44 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
-import { z } from 'zod'
 import prisma from '../lib/prisma'
 
-const comprasSchema = z.object({
-  data: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Formato de data esperado: DD/MM/YYYY'),
-  local: z.string().min(1),
-  total: z.number(),
-  items: z.array(
-    z.object({
-      produto: z.string().min(1),
-      valor: z.number().min(0),
-      desconto: z.number().min(0).default(0),
-    })
-  ).min(1),
-})
+import { comprasSchemaRequest } from '../schemas/compras.schema'
 
-export async function registarCompra(request: FastifyRequest, reply: FastifyReply) {
-  const body = comprasSchema.parse(request.body)
+export async function registarCompra(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const body = comprasSchemaRequest.parse(request.body)
 
   const [day, month, year] = body.data.split('/')
   const date = new Date(`${year}-${month}-${day}T12:00:00.000Z`)
 
-  let supermarket = await prisma.supermarket.findFirst({ where: { name: { equals: body.local } } })
+  const user = await prisma.user.findFirst({
+    where: { email: body.email },
+  })
+
+  const userId = !user ? 1 : user.id
+
+  let supermarket = await prisma.supermarket.findFirst({
+    where: { name: { equals: body.local } },
+  })
   if (!supermarket) {
-    supermarket = await prisma.supermarket.create({ data: { name: body.local, createdById: null } })
+    supermarket = await prisma.supermarket.create({
+      data: { name: body.local, createdById: userId },
+    })
   }
 
   let productsCreated = 0
   let pricesCreated = 0
   const records = []
 
-  for (const item of body.items) {
-    const netPrice = Math.round((item.valor - item.desconto) * 100) / 100
-
+  for (const item of body.produtos) {
     let product = await prisma.product.findFirst({
       where: { name: { equals: item.produto, mode: 'insensitive' } },
     })
     if (!product) {
-      product = await prisma.product.create({ data: { name: item.produto, unit: 'un', createdById: null } })
+      product = await prisma.product.create({
+        data: { name: item.produto, unit: 'un', createdById: userId },
+      })
       productsCreated++
     }
 
@@ -45,16 +46,25 @@ export async function registarCompra(request: FastifyRequest, reply: FastifyRepl
       data: {
         productId: product.id,
         supermarketId: supermarket.id,
-        price: netPrice,
+        price: item.valor,
         quantity: 1,
+        notes: `Registado através da importação da fatura ${body.fatura}`,
         date,
-        notes: item.desconto > 0 ? `Desconto: ${item.desconto.toFixed(2)}€` : null,
-        createdById: null,
+        createdById: userId,
       },
     })
     pricesCreated++
-    records.push({ product: product.name, price: netPrice, priceRecordId: priceRecord.id })
+    records.push({
+      product: product.name,
+      price: item.valor,
+      priceRecordId: priceRecord.id,
+    })
   }
 
-  return reply.status(201).send({ supermarketId: supermarket.id, productsCreated, pricesCreated, records })
+  return reply.status(201).send({
+    supermarketId: supermarket.id,
+    productsCreated,
+    pricesCreated,
+    records,
+  })
 }
