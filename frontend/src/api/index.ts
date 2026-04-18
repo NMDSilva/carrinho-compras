@@ -1,4 +1,4 @@
-import axios from 'axios'
+import { $fetch } from 'ofetch'
 import type {
   Product,
   Supermarket,
@@ -10,63 +10,60 @@ import type {
   User,
 } from '@/types'
 
-const api = axios.create({ baseURL: '/api' })
-
-// Injeta o token JWT em todos os pedidos autenticados
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
-
-// Se o servidor devolver 401, limpa o token
-api.interceptors.response.use(
-  (r) => r,
-  (error) => {
-    if (error.response?.status === 401) {
+const api = $fetch.create({
+  baseURL: '/api',
+  onRequest({ options }) {
+    const token = localStorage.getItem('token')
+    if (token) {
+      const h = new Headers(options.headers as HeadersInit)
+      h.set('Authorization', `Bearer ${token}`)
+      options.headers = h
+    }
+  },
+  onResponseError({ response }) {
+    if (response.status === 401) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
-    return Promise.reject(error)
-  }
-)
+  },
+})
 
 // Produtos
 export const productsApi = {
   getAll: (params?: { search?: string; category?: string }) =>
-    api.get<Product[]>('/products', { params }).then((r) => r.data),
-  getById: (id: number) => api.get<Product>(`/products/${id}`).then((r) => r.data),
-  getCategories: () => api.get<string[]>('/products/categories').then((r) => r.data),
+    api<Product[]>('/products', { query: params }),
+  getById: (id: number) => api<Product>(`/products/${id}`),
+  getCategories: () => api<string[]>('/products/categories'),
   create: (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | '_count' | 'prices'>) =>
-    api.post<Product>('/products', data).then((r) => r.data),
+    api<Product>('/products', { method: 'POST', body: data }),
   update: (id: number, data: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>) =>
-    api.put<Product>(`/products/${id}`, data).then((r) => r.data),
-  delete: (id: number) => api.delete(`/products/${id}`),
+    api<Product>(`/products/${id}`, { method: 'PUT', body: data }),
+  delete: (id: number) => api(`/products/${id}`, { method: 'DELETE' }),
 }
 
 // Supermercados
 export const supermarketsApi = {
-  getAll: () => api.get<Supermarket[]>('/supermarkets').then((r) => r.data),
-  getById: (id: number) => api.get<Supermarket>(`/supermarkets/${id}`).then((r) => r.data),
+  getAll: () => api<Supermarket[]>('/supermarkets'),
+  getById: (id: number) => api<Supermarket>(`/supermarkets/${id}`),
   create: (data: Omit<Supermarket, 'id' | 'createdAt' | 'updatedAt' | '_count'>) =>
-    api.post<Supermarket>('/supermarkets', data).then((r) => r.data),
+    api<Supermarket>('/supermarkets', { method: 'POST', body: data }),
   update: (id: number, data: Partial<Omit<Supermarket, 'id' | 'createdAt' | 'updatedAt'>>) =>
-    api.put<Supermarket>(`/supermarkets/${id}`, data).then((r) => r.data),
-  delete: (id: number) => api.delete(`/supermarkets/${id}`),
+    api<Supermarket>(`/supermarkets/${id}`, { method: 'PUT', body: data }),
+  delete: (id: number) => api(`/supermarkets/${id}`, { method: 'DELETE' }),
 }
 
 // Admin — utilizadores
 export const usersApi = {
-  getAll: () => api.get<User[]>('/admin/users').then((r) => r.data),
+  getAll: () => api<User[]>('/admin/users'),
   update: (id: number, data: Partial<Pick<User, 'name' | 'email' | 'role'> & { password?: string }>) =>
-    api.patch<User>(`/admin/users/${id}`, data).then((r) => r.data),
-  delete: (id: number) => api.delete(`/admin/users/${id}`),
+    api<User>(`/admin/users/${id}`, { method: 'PATCH', body: data }),
+  delete: (id: number) => api(`/admin/users/${id}`, { method: 'DELETE' }),
 }
 
 // Preços
 export const pricesApi = {
   getAll: (params?: { productId?: number; supermarketId?: number; limit?: number; offset?: number }) =>
-    api.get<PaginatedPrices>('/prices', { params }).then((r) => r.data),
+    api<PaginatedPrices>('/prices', { query: params }),
   create: (data: {
     productId: number
     supermarketId: number
@@ -74,17 +71,14 @@ export const pricesApi = {
     quantity?: number
     date?: string
     notes?: string
-  }) => api.post<PriceRecord>('/prices', data).then((r) => r.data),
+  }) => api<PriceRecord>('/prices', { method: 'POST', body: data }),
   update: (id: number, data: Partial<Omit<PriceRecord, 'id' | 'createdAt' | 'product' | 'supermarket'>>) =>
-    api.put<PriceRecord>(`/prices/${id}`, data).then((r) => r.data),
-  delete: (id: number) => api.delete(`/prices/${id}`),
-  compare: (productId: number) =>
-    api.get<CompareResult>(`/prices/compare/${productId}`).then((r) => r.data),
+    api<PriceRecord>(`/prices/${id}`, { method: 'PUT', body: data }),
+  delete: (id: number) => api(`/prices/${id}`, { method: 'DELETE' }),
+  compare: (productId: number) => api<CompareResult>(`/prices/compare/${productId}`),
   history: (productId: number, supermarketIds?: number[]) =>
-    api
-      .get<PriceHistory>(`/prices/history/${productId}`, {
-        params: supermarketIds?.length ? { supermarketIds: supermarketIds.join(',') } : {},
-      })
-      .then((r) => r.data),
-  dashboard: () => api.get<DashboardStats>('/prices/dashboard').then((r) => r.data),
+    api<PriceHistory>(`/prices/history/${productId}`, {
+      query: supermarketIds?.length ? { supermarketIds: supermarketIds.join(',') } : {},
+    }),
+  dashboard: () => api<DashboardStats>('/prices/dashboard'),
 }

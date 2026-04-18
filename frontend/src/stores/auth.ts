@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import { $fetch } from 'ofetch'
 
 interface AuthUser {
   id: number
@@ -30,32 +30,38 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchMe() {
     if (!token.value) return
     try {
-      const res = await axios.get<AuthUser>('/api/auth/me', {
+      user.value = await $fetch<AuthUser>('/api/auth/me', {
         headers: { Authorization: `Bearer ${token.value}` },
       })
-      user.value = res.data
     } catch {
       clearAuth()
     }
   }
 
   async function login(email: string, password: string) {
-    const res = await axios.post<{ token: string; user: AuthUser }>('/api/auth/login', { email, password })
-    setToken(res.data.token)
-    user.value = res.data.user
+    const res = await $fetch<{ token: string; user: AuthUser }>('/api/auth/login', {
+      method: 'POST',
+      body: { email, password },
+    })
+    setToken(res.token)
+    user.value = res.user
   }
 
   async function register(name: string, email: string, password: string) {
-    const res = await axios.post<{ token: string; user: AuthUser }>('/api/auth/register', { name, email, password })
-    setToken(res.data.token)
-    user.value = res.data.user
+    const res = await $fetch<{ token: string; user: AuthUser }>('/api/auth/register', {
+      method: 'POST',
+      body: { name, email, password },
+    })
+    setToken(res.token)
+    user.value = res.user
   }
 
   async function updateMe(data: { name?: string; email?: string; currentPassword?: string; newPassword?: string }) {
-    const res = await axios.patch<AuthUser>('/api/auth/me', data, {
+    user.value = await $fetch<AuthUser>('/api/auth/me', {
+      method: 'PATCH',
+      body: data,
       headers: { Authorization: `Bearer ${token.value}` },
     })
-    user.value = res.data
   }
 
   function logout() {
