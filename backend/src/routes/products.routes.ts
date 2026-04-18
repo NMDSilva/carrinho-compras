@@ -1,18 +1,23 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import { getProducts, getProduct, getCategories, createProduct, updateProduct, deleteProduct } from '../controllers/products.controller'
+import {
+  getProducts,
+  getProduct,
+  getCategories,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from '../controllers/products.controller'
 import { requireAuth } from '../middleware/auth.middleware'
-
-const productBodySchema = z.object({
-  name: z.string().min(1),
-  brand: z.string().nullable().optional(),
-  unit: z.string().min(1),
-  category: z.string().nullable().optional(),
-})
+import { productBodySchema } from '../schemas/products.schema'
 
 const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/categories', {
-    schema: { tags: ['Produtos'], summary: 'Listar categorias', response: { 200: z.array(z.string()) } },
+    schema: {
+      tags: ['Produtos'],
+      summary: 'Listar categorias',
+      response: { 200: z.array(z.string()) },
+    },
     handler: getCategories,
   })
 
@@ -20,7 +25,10 @@ const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
     schema: {
       tags: ['Produtos'],
       summary: 'Listar produtos',
-      querystring: z.object({ search: z.string().optional(), category: z.string().optional() }),
+      querystring: z.object({
+        search: z.string().optional(),
+        category: z.string().optional(),
+      }),
     },
     handler: getProducts,
   })

@@ -1,11 +1,20 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import { listUsers, getUser, updateUser, deleteUser } from '../controllers/users.controller'
+import {
+  listUsers,
+  getUser,
+  updateUser,
+  deleteUser,
+} from '../controllers/users.controller'
 import { requireAdmin } from '../middleware/auth.middleware'
 
 const userSchema = z.object({
-  id: z.number(), name: z.string(), email: z.string(), role: z.string(),
-  createdAt: z.string(), updatedAt: z.string(),
+  id: z.number(),
+  name: z.string(),
+  email: z.string(),
+  role: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 })
 
 const adminRoutes: FastifyPluginAsyncZod = async (fastify) => {

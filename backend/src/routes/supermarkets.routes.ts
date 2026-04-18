@@ -1,12 +1,14 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import { getSupermarkets, getSupermarket, createSupermarket, updateSupermarket, deleteSupermarket } from '../controllers/supermarkets.controller'
+import {
+  getSupermarkets,
+  getSupermarket,
+  createSupermarket,
+  updateSupermarket,
+  deleteSupermarket,
+} from '../controllers/supermarkets.controller'
 import { requireAuth } from '../middleware/auth.middleware'
-
-const supermarketBodySchema = z.object({
-  name: z.string().min(1),
-  location: z.string().nullable().optional(),
-})
+import { supermarketBodySchema } from '../schemas/supermarkets.schema'
 
 const supermarketsRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/', {
