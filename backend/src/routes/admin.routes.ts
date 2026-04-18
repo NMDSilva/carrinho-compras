@@ -13,8 +13,8 @@ const userSchema = z.object({
   name: z.string(),
   email: z.string(),
   role: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 })
 
 const adminRoutes: FastifyPluginAsyncZod = async (fastify) => {
