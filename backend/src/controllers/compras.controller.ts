@@ -13,13 +13,13 @@ export async function registarCompra(
   const date = new Date(`${year}-${month}-${day}T12:00:00.000Z`)
 
   const user = await prisma.user.findFirst({
-    where: { email: body.email },
+    where: { email: body.email, mode: 'insensitive' },
   })
 
   const userId = !user ? 1 : user.id
 
   let supermarket = await prisma.supermarket.findFirst({
-    where: { name: { equals: body.local } },
+    where: { name: { equals: body.local, mode: 'insensitive' } },
   })
   if (!supermarket) {
     supermarket = await prisma.supermarket.create({
