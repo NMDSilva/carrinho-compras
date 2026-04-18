@@ -55,7 +55,7 @@ jobs:
             chmod 600 ~/carrinho-compras/backend/.env
             cd ~/carrinho-compras/backend
             docker compose up -d
-            npm ci --omit=dev --no-audit
+            NODE_OPTIONS="--max-old-space-size=512" npm ci --omit=dev --no-audit
             npx prisma generate
             npx prisma migrate deploy
             pm2 restart carrinho-compras || pm2 start dist/server.js --name carrinho-compras --cwd ~/carrinho-compras/backend
