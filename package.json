@@ -18,7 +18,12 @@
     "db:generate": "npm run db:generate -w backend",
     "db:migrate": "npm run db:migrate -w backend",
     "db:studio": "npm run db:studio -w backend",
-    "db:seed": "npm run db:seed -w backend"
+    "db:seed": "npm run db:seed -w backend",
+    "test": "npm run test -w backend && npm run test -w frontend",
+    "test:backend": "npm run test -w backend",
+    "test:frontend": "npm run test -w frontend",
+    "test:watch": "concurrently -n backend,frontend -c blue,green \"npm run test:watch -w backend\" \"npm run test:watch -w frontend\"",
+    "test:coverage": "npm run test:coverage -w backend && npm run test:coverage -w frontend"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
