@@ -1,6 +1,6 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import { getPrices, createPrice, updatePrice, deletePrice, compareProductPrices, getPriceHistory, getDashboardStats } from '../controllers/prices.controller'
+import { getPrices, getPriceById, createPrice, updatePrice, deletePrice, compareProductPrices, getPriceHistory, getDashboardStats } from '../controllers/prices.controller'
 import { requireAuth } from '../middleware/auth.middleware'
 
 const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
@@ -40,6 +40,15 @@ const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
       }),
     },
     handler: getPrices,
+  })
+
+  fastify.get('/:id', {
+    schema: {
+      tags: ['Preços'],
+      summary: 'Obter preço por ID',
+      params: z.object({ id: z.string() }),
+    },
+    handler: getPriceById,
   })
 
   fastify.post('/', {
