@@ -46,6 +46,15 @@ export async function createPrice(request: FastifyRequest, reply: FastifyReply) 
   return reply.status(201).send(price)
 }
 
+export async function getPriceById(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  const price = await prisma.priceRecord.findUnique({
+    where: { id: Number(request.params.id) },
+    include: { product: true, supermarket: true, createdBy: userSelect, updatedBy: userSelect },
+  })
+  if (!price) return reply.status(404).send({ error: 'Registo não encontrado' })
+  return reply.send(price)
+}
+
 export async function updatePrice(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
   const data = priceRecordSchema.partial().parse(request.body)
   const { userId } = getAuthUser(request)
