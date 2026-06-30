@@ -13,6 +13,7 @@
     "test:coverage": "cross-env NODE_OPTIONS=--no-experimental-webstorage vitest run --coverage"
   },
   "dependencies": {
+    "@carrinho/shared": "*",
     "ofetch": "^1.5.1",
     "pinia": "^2.2.0",
     "vue": "^3.5.0",
