@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { pricesApi, productsApi, supermarketsApi } from '@/api'
 import type { PriceRecord, Product, Supermarket } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
@@ -24,6 +25,9 @@ const deleteTarget = ref<PriceRecord | null>(null)
 const showDeleteConfirm = ref(false)
 const deleting = ref(false)
 
+const route = useRoute()
+const router = useRouter()
+
 const today = new Date().toISOString().substring(0, 10)
 const form = ref({
   productId: '' as number | '',
@@ -40,8 +44,12 @@ async function loadPrices() {
   loading.value = true
   try {
     const result = await pricesApi.getAll({
-      productId: filterProduct.value !== '' ? Number(filterProduct.value) : undefined,
-      supermarketId: filterSupermarket.value !== '' ? Number(filterSupermarket.value) : undefined,
+      productId:
+        filterProduct.value !== '' ? Number(filterProduct.value) : undefined,
+      supermarketId:
+        filterSupermarket.value !== ''
+          ? Number(filterSupermarket.value)
+          : undefined,
       limit: PAGE_SIZE,
       offset: page.value * PAGE_SIZE,
     })
@@ -58,11 +66,27 @@ onMounted(async () => {
     supermarketsApi.getAll().then((s) => (supermarkets.value = s)),
     loadPrices(),
   ])
+
+  if (route.params.id) {
+    try {
+      const price = await pricesApi.getById(Number(route.params.id))
+      openEdit(price)
+    } catch {
+      router.replace({ name: 'prices' })
+    }
+  }
 })
 
 function openCreate() {
   editingPrice.value = null
-  form.value = { productId: '', supermarketId: '', price: '', quantity: 1, date: today, notes: '' }
+  form.value = {
+    productId: '',
+    supermarketId: '',
+    price: '',
+    quantity: 1,
+    date: today,
+    notes: '',
+  }
   formError.value = ''
   showModal.value = true
 }
@@ -82,7 +106,11 @@ function openEdit(price: PriceRecord) {
 }
 
 async function save() {
-  if (!form.value.productId || !form.value.supermarketId || form.value.price === '') {
+  if (
+    !form.value.productId ||
+    !form.value.supermarketId ||
+    form.value.price === ''
+  ) {
     formError.value = 'Produto, supermercado e preço são obrigatórios'
     return
   }
@@ -135,8 +163,21 @@ function applyFilters() {
   loadPrices()
 }
 
+function prevPage() {
+  page.value--
+  loadPrices()
+}
+
+function nextPage() {
+  page.value++
+  loadPrices()
+}
+
 function formatPrice(price: number) {
-  return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(price)
+  return new Intl.NumberFormat('pt-PT', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(price)
 }
 
 function formatDate(date: string) {
@@ -152,8 +193,18 @@ function formatDate(date: string) {
         <p class="text-gray-500 mt-1">Registar e gerir preços de produtos</p>
       </div>
       <button class="btn-primary" @click="openCreate">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 4v16m8-8H4"
+          />
         </svg>
         Registar Preço
       </button>
@@ -161,52 +212,99 @@ function formatDate(date: string) {
 
     <!-- Filters -->
     <div class="flex flex-col sm:flex-row gap-3 mb-6">
-      <select v-model="filterProduct" @change="applyFilters" class="input max-w-xs">
+      <select
+        v-model="filterProduct"
+        @change="applyFilters"
+        class="input max-w-xs"
+      >
         <option value="">Todos os produtos</option>
-        <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}{{ p.brand ? ` (${p.brand})` : '' }}</option>
+        <option v-for="p in products" :key="p.id" :value="p.id">
+          {{ p.name }}{{ p.brand ? ` (${p.brand})` : '' }}
+        </option>
       </select>
-      <select v-model="filterSupermarket" @change="applyFilters" class="input max-w-xs">
+      <select
+        v-model="filterSupermarket"
+        @change="applyFilters"
+        class="input max-w-xs"
+      >
         <option value="">Todos os supermercados</option>
-        <option v-for="s in supermarkets" :key="s.id" :value="s.id">{{ s.name }}</option>
+        <option v-for="s in supermarkets" :key="s.id" :value="s.id">
+          {{ s.name }}
+        </option>
       </select>
     </div>
 
     <!-- Table -->
     <div class="card overflow-hidden">
       <div v-if="loading" class="flex items-center justify-center h-40">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+        <div
+          class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"
+        ></div>
       </div>
       <table v-else class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-100">
           <tr>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">Produto</th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">Supermercado</th>
-            <th class="text-right px-6 py-3 font-medium text-gray-500">Preço</th>
+            <th class="text-left px-6 py-3 font-medium text-gray-500">
+              Produto
+            </th>
+            <th class="text-left px-6 py-3 font-medium text-gray-500">
+              Supermercado
+            </th>
+            <th class="text-right px-6 py-3 font-medium text-gray-500">
+              Preço
+            </th>
             <th class="text-right px-6 py-3 font-medium text-gray-500">Qtd.</th>
             <th class="text-left px-6 py-3 font-medium text-gray-500">Data</th>
             <th class="text-left px-6 py-3 font-medium text-gray-500">Notas</th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">Utilizador</th>
+            <th class="text-left px-6 py-3 font-medium text-gray-500">
+              Utilizador
+            </th>
             <th class="px-6 py-3"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
           <tr v-if="prices.length === 0">
-            <td colspan="8" class="text-center py-12 text-gray-400">Nenhum registo encontrado</td>
+            <td colspan="8" class="text-center py-12 text-gray-400">
+              Nenhum registo encontrado
+            </td>
           </tr>
-          <tr v-for="price in prices" :key="price.id" class="hover:bg-gray-50 transition-colors">
+          <tr
+            v-for="price in prices"
+            :key="price.id"
+            class="hover:bg-gray-50 transition-colors"
+          >
             <td class="px-6 py-4">
               <p class="font-medium text-gray-900">{{ price.product?.name }}</p>
-              <p v-if="price.product?.brand" class="text-xs text-gray-400">{{ price.product.brand }}</p>
+              <p v-if="price.product?.brand" class="text-xs text-gray-400">
+                {{ price.product.brand }}
+              </p>
             </td>
-            <td class="px-6 py-4 text-gray-600">{{ price.supermarket?.name }}</td>
-            <td class="px-6 py-4 text-right font-semibold text-brand-700">{{ formatPrice(price.price) }}</td>
-            <td class="px-6 py-4 text-right text-gray-500">{{ price.quantity }}</td>
-            <td class="px-6 py-4 text-gray-500">{{ formatDate(price.date) }}</td>
-            <td class="px-6 py-4 text-gray-400 text-xs max-w-32 truncate">{{ price.notes ?? '—' }}</td>
+            <td class="px-6 py-4 text-gray-600">
+              {{ price.supermarket?.name }}
+            </td>
+            <td class="px-6 py-4 text-right font-semibold text-brand-700">
+              {{ formatPrice(price.price) }}
+            </td>
+            <td class="px-6 py-4 text-right text-gray-500">
+              {{ price.quantity }}
+            </td>
+            <td class="px-6 py-4 text-gray-500">
+              {{ formatDate(price.date) }}
+            </td>
+            <td class="px-6 py-4 text-gray-400 text-xs max-w-32 truncate">
+              {{ price.notes ?? '—' }}
+            </td>
             <td class="px-6 py-4">
               <div v-if="price.createdBy" class="text-xs">
-                <span class="text-gray-700 font-medium">{{ price.createdBy.name }}</span>
-                <span v-if="price.updatedBy && price.updatedBy.id !== price.createdBy.id" class="text-gray-400 block">
+                <span class="text-gray-700 font-medium">{{
+                  price.createdBy.name
+                }}</span>
+                <span
+                  v-if="
+                    price.updatedBy && price.updatedBy.id !== price.createdBy.id
+                  "
+                  class="text-gray-400 block"
+                >
                   editado por {{ price.updatedBy.name }}
                 </span>
               </div>
@@ -214,8 +312,15 @@ function formatDate(date: string) {
             </td>
             <td class="px-6 py-4">
               <div class="flex items-center justify-end gap-2">
-                <button @click="openEdit(price)" class="btn-secondary btn-sm">Editar</button>
-                <button @click="openDeleteConfirm(price)" class="btn-danger btn-sm">Eliminar</button>
+                <button @click="openEdit(price)" class="btn-secondary btn-sm">
+                  Editar
+                </button>
+                <button
+                  @click="openDeleteConfirm(price)"
+                  class="btn-danger btn-sm"
+                >
+                  Eliminar
+                </button>
               </div>
             </td>
           </tr>
@@ -223,12 +328,27 @@ function formatDate(date: string) {
       </table>
 
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+      <div
+        v-if="totalPages > 1"
+        class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500"
+      >
         <span>{{ total }} registos</span>
         <div class="flex items-center gap-2">
-          <button class="btn-secondary btn-sm" :disabled="page === 0" @click="page--; loadPrices()">Anterior</button>
+          <button
+            class="btn-secondary btn-sm"
+            :disabled="page === 0"
+            @click="prevPage"
+          >
+            Anterior
+          </button>
           <span>{{ page + 1 }} / {{ totalPages }}</span>
-          <button class="btn-secondary btn-sm" :disabled="page + 1 >= totalPages" @click="page++; loadPrices()">Seguinte</button>
+          <button
+            class="btn-secondary btn-sm"
+            :disabled="page + 1 >= totalPages"
+            @click="nextPage"
+          >
+            Seguinte
+          </button>
         </div>
       </div>
     </div>
@@ -255,17 +375,32 @@ function formatDate(date: string) {
           <label class="label">Supermercado *</label>
           <select v-model="form.supermarketId" class="input">
             <option value="">Selecionar supermercado…</option>
-            <option v-for="s in supermarkets" :key="s.id" :value="s.id">{{ s.name }}</option>
+            <option v-for="s in supermarkets" :key="s.id" :value="s.id">
+              {{ s.name }}
+            </option>
           </select>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="label">Preço (€) *</label>
-            <input v-model="form.price" type="number" step="0.01" min="0" class="input" placeholder="0.00" />
+            <input
+              v-model="form.price"
+              type="number"
+              step="0.01"
+              min="0"
+              class="input"
+              placeholder="0.00"
+            />
           </div>
           <div>
             <label class="label">Quantidade</label>
-            <input v-model="form.quantity" type="number" step="0.1" min="0.1" class="input" />
+            <input
+              v-model="form.quantity"
+              type="number"
+              step="0.1"
+              min="0.1"
+              class="input"
+            />
           </div>
         </div>
         <div>
@@ -274,7 +409,12 @@ function formatDate(date: string) {
         </div>
         <div>
           <label class="label">Notas</label>
-          <input v-model="form.notes" type="text" class="input" placeholder="Opcional…" />
+          <input
+            v-model="form.notes"
+            type="text"
+            class="input"
+            placeholder="Opcional…"
+          />
         </div>
       </div>
     </FormDialog>

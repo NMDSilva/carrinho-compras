@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { productsApi } from '@/api'
+import { useRoute, useRouter } from 'vue-router'
 import type { Product } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
 
@@ -19,6 +20,9 @@ const form = ref({ name: '', brand: '', unit: 'un', category: '' })
 const deleteTarget = ref<Product | null>(null)
 const showDeleteConfirm = ref(false)
 const deleting = ref(false)
+
+const route = useRoute()
+const router = useRouter()
 
 const UNITS = ['un', 'kg', 'g', 'L', 'ml', 'cx', 'pac', 'dz']
 
@@ -41,6 +45,15 @@ async function loadCategories() {
 onMounted(() => {
   loadProducts()
   loadCategories()
+
+  if (route.params.id) {
+    const product = products.value.find((p) => p.id === Number(route.params.id))
+    if (product) {
+      openEdit(product)
+    } else {
+      router.replace({ name: 'products' })
+    }
+  }
 })
 
 function openCreate() {
@@ -119,8 +132,18 @@ async function confirmDelete() {
         <p class="text-gray-500 mt-1">Gerir produtos registados</p>
       </div>
       <button class="btn-primary" @click="openCreate">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 4v16m8-8H4"
+          />
         </svg>
         Novo Produto
       </button>
@@ -135,43 +158,81 @@ async function confirmDelete() {
         placeholder="Pesquisar produto..."
         class="input max-w-xs"
       />
-      <select v-model="filterCategory" @change="loadProducts" class="input max-w-xs">
+      <select
+        v-model="filterCategory"
+        @change="loadProducts"
+        class="input max-w-xs"
+      >
         <option value="">Todas as categorias</option>
-        <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+        <option v-for="cat in categories" :key="cat" :value="cat">
+          {{ cat }}
+        </option>
       </select>
     </div>
 
     <!-- Table -->
     <div class="card overflow-hidden">
       <div v-if="loading" class="flex items-center justify-center h-40">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+        <div
+          class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"
+        ></div>
       </div>
       <table v-else class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-100">
           <tr>
             <th class="text-left px-6 py-3 font-medium text-gray-500">Nome</th>
             <th class="text-left px-6 py-3 font-medium text-gray-500">Marca</th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">Unidade</th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">Categoria</th>
-            <th class="text-right px-6 py-3 font-medium text-gray-500">Preços</th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">Registado por</th>
+            <th class="text-left px-6 py-3 font-medium text-gray-500">
+              Unidade
+            </th>
+            <th class="text-left px-6 py-3 font-medium text-gray-500">
+              Categoria
+            </th>
+            <th class="text-right px-6 py-3 font-medium text-gray-500">
+              Preços
+            </th>
+            <th class="text-left px-6 py-3 font-medium text-gray-500">
+              Registado por
+            </th>
             <th class="px-6 py-3"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
           <tr v-if="products.length === 0">
-            <td colspan="7" class="text-center py-12 text-gray-400">Nenhum produto encontrado</td>
+            <td colspan="7" class="text-center py-12 text-gray-400">
+              Nenhum produto encontrado
+            </td>
           </tr>
-          <tr v-for="product in products" :key="product.id" class="hover:bg-gray-50 transition-colors">
-            <td class="px-6 py-4 font-medium text-gray-900">{{ product.name }}</td>
+          <tr
+            v-for="product in products"
+            :key="product.id"
+            class="hover:bg-gray-50 transition-colors"
+          >
+            <td class="px-6 py-4 font-medium text-gray-900">
+              {{ product.name }}
+            </td>
             <td class="px-6 py-4 text-gray-500">{{ product.brand ?? '—' }}</td>
-            <td class="px-6 py-4"><span class="badge-blue">{{ product.unit }}</span></td>
-            <td class="px-6 py-4 text-gray-500">{{ product.category ?? '—' }}</td>
-            <td class="px-6 py-4 text-right text-gray-500">{{ product._count?.prices ?? 0 }}</td>
+            <td class="px-6 py-4">
+              <span class="badge-blue">{{ product.unit }}</span>
+            </td>
+            <td class="px-6 py-4 text-gray-500">
+              {{ product.category ?? '—' }}
+            </td>
+            <td class="px-6 py-4 text-right text-gray-500">
+              {{ product._count?.prices ?? 0 }}
+            </td>
             <td class="px-6 py-4">
               <div v-if="product.createdBy" class="text-xs">
-                <span class="text-gray-700 font-medium">{{ product.createdBy.name }}</span>
-                <span v-if="product.updatedBy && product.updatedBy.id !== product.createdBy.id" class="text-gray-400 block">
+                <span class="text-gray-700 font-medium">{{
+                  product.createdBy.name
+                }}</span>
+                <span
+                  v-if="
+                    product.updatedBy &&
+                    product.updatedBy.id !== product.createdBy.id
+                  "
+                  class="text-gray-400 block"
+                >
                   editado por {{ product.updatedBy.name }}
                 </span>
               </div>
@@ -179,8 +240,15 @@ async function confirmDelete() {
             </td>
             <td class="px-6 py-4">
               <div class="flex items-center justify-end gap-2">
-                <button @click="openEdit(product)" class="btn-secondary btn-sm">Editar</button>
-                <button @click="openDeleteConfirm(product)" class="btn-danger btn-sm">Eliminar</button>
+                <button @click="openEdit(product)" class="btn-secondary btn-sm">
+                  Editar
+                </button>
+                <button
+                  @click="openDeleteConfirm(product)"
+                  class="btn-danger btn-sm"
+                >
+                  Eliminar
+                </button>
               </div>
             </td>
           </tr>
@@ -198,22 +266,40 @@ async function confirmDelete() {
       <div class="space-y-4">
         <div>
           <label class="label">Nome *</label>
-          <input v-model="form.name" type="text" class="input" placeholder="ex: Leite Meio-Gordo" />
+          <input
+            v-model="form.name"
+            type="text"
+            class="input"
+            placeholder="ex: Leite Meio-Gordo"
+          />
         </div>
         <div>
           <label class="label">Marca</label>
-          <input v-model="form.brand" type="text" class="input" placeholder="ex: Mimosa" />
+          <input
+            v-model="form.brand"
+            type="text"
+            class="input"
+            placeholder="ex: Mimosa"
+          />
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="label">Unidade *</label>
             <select v-model="form.unit" class="input">
-              <option v-for="unit in UNITS" :key="unit" :value="unit">{{ unit }}</option>
+              <option v-for="unit in UNITS" :key="unit" :value="unit">
+                {{ unit }}
+              </option>
             </select>
           </div>
           <div>
             <label class="label">Categoria</label>
-            <input v-model="form.category" type="text" list="cats" class="input" placeholder="ex: Lacticínios" />
+            <input
+              v-model="form.category"
+              type="text"
+              list="cats"
+              class="input"
+              placeholder="ex: Lacticínios"
+            />
             <datalist id="cats">
               <option v-for="cat in categories" :key="cat" :value="cat" />
             </datalist>
