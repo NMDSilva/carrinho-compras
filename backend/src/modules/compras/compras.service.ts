@@ -1,14 +1,7 @@
-import { FastifyRequest, FastifyReply } from 'fastify'
-import prisma from '../lib/prisma'
+import prisma from '../../shared/lib/prisma'
+import { ComprasRequest } from './compras.schema'
 
-import { comprasSchemaRequest } from '../schemas/compras.schema'
-
-export async function registarCompra(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
-  const body = comprasSchemaRequest.parse(request.body)
-
+export async function registarCompra(body: ComprasRequest) {
   const [day, month, year] = body.data.split('/')
   const date = new Date(`${year}-${month}-${day}T12:00:00.000Z`)
 
@@ -61,10 +54,10 @@ export async function registarCompra(
     })
   }
 
-  return reply.status(201).send({
+  return {
     supermarketId: supermarket.id,
     productsCreated,
     pricesCreated,
     records,
-  })
+  }
 }

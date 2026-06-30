@@ -10,12 +10,12 @@ import {
 } from 'fastify-type-provider-zod'
 import { ZodError } from 'zod'
 
-import authRoutes from './routes/auth.routes'
-import adminRoutes from './routes/admin.routes'
-import comprasRoutes from './routes/compras.routes'
-import productsRoutes from './routes/products.routes'
-import supermarketsRoutes from './routes/supermarkets.routes'
-import pricesRoutes from './routes/prices.routes'
+import authRoutes from './modules/auth/auth.routes'
+import usersRoutes from './modules/users/users.routes'
+import comprasRoutes from './modules/compras/compras.routes'
+import productsRoutes from './modules/products/products.routes'
+import supermarketsRoutes from './modules/supermarkets/supermarkets.routes'
+import pricesRoutes from './modules/prices/prices.routes'
 
 export async function buildApp() {
   const app = Fastify({
@@ -124,7 +124,7 @@ export async function buildApp() {
   }))
 
   await app.register(authRoutes, { prefix: '/api/auth' })
-  await app.register(adminRoutes, { prefix: '/api/admin' })
+  await app.register(usersRoutes, { prefix: '/api/admin' })
   await app.register(comprasRoutes, { prefix: '/api/compras' })
   await app.register(productsRoutes, { prefix: '/api/products' })
   await app.register(supermarketsRoutes, { prefix: '/api/supermarkets' })

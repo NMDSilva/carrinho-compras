@@ -1,4 +1,4 @@
-import z from 'zod'
+import { z } from 'zod'
 
 export const comprasSchemaRequest = z.object({
   fatura: z.string().min(1),
@@ -30,3 +30,5 @@ export const comprasSchemaResponse = z.object({
     })
   ),
 })
+
+export type ComprasRequest = z.infer<typeof comprasSchemaRequest>

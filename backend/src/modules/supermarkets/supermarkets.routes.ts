@@ -1,14 +1,13 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
-import { z } from 'zod'
 import {
   getSupermarkets,
   getSupermarket,
   createSupermarket,
   updateSupermarket,
   deleteSupermarket,
-} from '../controllers/supermarkets.controller'
-import { requireAuth } from '../middleware/auth.middleware'
-import { supermarketBodySchema } from '../schemas/supermarkets.schema'
+} from './supermarkets.controller'
+import { requireAuth } from '../../shared/middleware/auth.middleware'
+import { supermarketBodySchema, supermarketIdParamSchema } from './supermarkets.schema'
 
 const supermarketsRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/', {
@@ -20,7 +19,7 @@ const supermarketsRoutes: FastifyPluginAsyncZod = async (fastify) => {
     schema: {
       tags: ['Supermercados'],
       summary: 'Detalhes de um supermercado',
-      params: z.object({ id: z.string() }),
+      params: supermarketIdParamSchema,
     },
     handler: getSupermarket,
   })
@@ -42,7 +41,7 @@ const supermarketsRoutes: FastifyPluginAsyncZod = async (fastify) => {
       tags: ['Supermercados'],
       summary: 'Atualizar supermercado',
       security: [{ bearerAuth: [] }],
-      params: z.object({ id: z.string() }),
+      params: supermarketIdParamSchema,
       body: supermarketBodySchema.partial(),
     },
     handler: updateSupermarket,
@@ -54,7 +53,7 @@ const supermarketsRoutes: FastifyPluginAsyncZod = async (fastify) => {
       tags: ['Supermercados'],
       summary: 'Eliminar supermercado',
       security: [{ bearerAuth: [] }],
-      params: z.object({ id: z.string() }),
+      params: supermarketIdParamSchema,
     },
     handler: deleteSupermarket,
   })

@@ -5,7 +5,7 @@ import { prismaMock } from './mocks/prisma'
 process.env.JWT_SECRET = 'test-secret'
 process.env.NODE_ENV = 'test'
 
-vi.mock('../src/lib/prisma', () => ({
+vi.mock('../src/shared/lib/prisma', () => ({
   default: prismaMock,
 }))
 
