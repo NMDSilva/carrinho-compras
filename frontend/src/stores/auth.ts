@@ -33,8 +33,12 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = await $fetch<AuthUser>('/api/auth/me', {
         headers: { Authorization: `Bearer ${token.value}` },
       })
-    } catch {
-      clearAuth()
+    } catch (err: any) {
+      const status = err?.response?.status ?? err?.status
+      console.error('[auth] fetchMe failed:', status, err?.message)
+      if (status === 401) {
+        clearAuth()
+      }
     }
   }
 

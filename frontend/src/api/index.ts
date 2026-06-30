@@ -23,7 +23,8 @@ const api = $fetch.create({
   onResponseError({ response }) {
     if (response.status === 401) {
       localStorage.removeItem('token')
-      window.location.href = '/login'
+      const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+      window.location.href = `/login?redirect=${redirect}`
     }
   },
 })
@@ -64,6 +65,7 @@ export const usersApi = {
 export const pricesApi = {
   getAll: (params?: { productId?: number; supermarketId?: number; limit?: number; offset?: number }) =>
     api<PaginatedPrices>('/prices', { query: params }),
+  getById: (id: number) => api<PriceRecord>(`/prices/${id}`),
   create: (data: {
     productId: number
     supermarketId: number

@@ -11,10 +11,21 @@ const router = createRouter({
       component: () => import('@/views/LoginView.vue'),
       meta: { public: true },
     },
-    { path: '/', name: 'dashboard', component: DashboardView, meta: { requiresAuth: true } },
+    {
+      path: '/',
+      name: 'dashboard',
+      component: DashboardView,
+      meta: { requiresAuth: true },
+    },
     {
       path: '/produtos',
       name: 'products',
+      component: () => import('@/views/ProductsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/produtos/:id/editar',
+      name: 'products-edit',
       component: () => import('@/views/ProductsView.vue'),
       meta: { requiresAuth: true },
     },
@@ -27,6 +38,12 @@ const router = createRouter({
     {
       path: '/precos',
       name: 'prices',
+      component: () => import('@/views/PricesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/precos/:id/editar',
+      name: 'prices-edit',
       component: () => import('@/views/PricesView.vue'),
       meta: { requiresAuth: true },
     },
@@ -58,6 +75,8 @@ router.beforeEach(async (to, _from, next) => {
   if (auth.token && !auth.user) {
     await auth.fetchMe()
   }
+
+  console.log('[router] isAuthenticated:', auth.isAuthenticated, '| user:', auth.user)
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return next({ name: 'login', query: { redirect: to.fullPath } })
