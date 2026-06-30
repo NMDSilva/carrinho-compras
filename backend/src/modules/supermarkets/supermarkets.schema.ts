@@ -1,10 +1,8 @@
 import { z } from 'zod'
 
-export const supermarketBodySchema = z.object({
-  name: z.string().min(1),
-  location: z.string().nullable().optional(),
-})
+// Schema de input partilhado (fonte única em @carrinho/shared)
+export { supermarketBodySchema } from '@carrinho/shared'
+export type { SupermarketInput } from '@carrinho/shared'
 
+// Plumbing HTTP específico do backend
 export const supermarketIdParamSchema = z.object({ id: z.string() })
-
-export type SupermarketInput = z.infer<typeof supermarketBodySchema>

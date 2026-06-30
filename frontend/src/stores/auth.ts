@@ -1,13 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { $fetch } from 'ofetch'
-
-interface AuthUser {
-  id: number
-  name: string
-  email: string
-  role: string
-}
+import type { AuthUser } from '@carrinho/shared'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('token'))

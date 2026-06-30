@@ -1,14 +1,10 @@
 import { z } from 'zod'
 
-export const priceRecordSchema = z.object({
-  productId: z.number().int().positive(),
-  supermarketId: z.number().int().positive(),
-  price: z.number().positive('Preço deve ser positivo'),
-  quantity: z.number().positive().default(1),
-  date: z.string().datetime().optional(),
-  notes: z.string().nullable().optional(),
-})
+// Schema de input partilhado (fonte única em @carrinho/shared)
+export { priceRecordSchema } from '@carrinho/shared'
+export type { PriceRecordInput } from '@carrinho/shared'
 
+// Plumbing HTTP específico do backend (validação de rotas / OpenAPI)
 export const priceCreateBodySchema = z.object({
   productId: z.number().int().positive(),
   supermarketId: z.number().int().positive(),
@@ -38,5 +34,3 @@ export const priceListQuerySchema = z.object({
 })
 
 export const priceHistoryQuerySchema = z.object({ supermarketIds: z.string().optional() })
-
-export type PriceRecordInput = z.infer<typeof priceRecordSchema>

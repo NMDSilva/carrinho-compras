@@ -1,12 +1,10 @@
 import { z } from 'zod'
 
-export const updateUserSchema = z.object({
-  name: z.string().min(2).optional(),
-  email: z.string().email().optional(),
-  role: z.enum(['USER', 'ADMIN']).optional(),
-  password: z.string().min(6).optional(),
-})
+// Schema de input partilhado (fonte única em @carrinho/shared)
+export { updateUserSchema } from '@carrinho/shared'
+export type { UpdateUserInput } from '@carrinho/shared'
 
+// Plumbing HTTP específico do backend
 export const userResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -17,5 +15,3 @@ export const userResponseSchema = z.object({
 })
 
 export const userIdParamSchema = z.object({ id: z.string() })
-
-export type UpdateUserInput = z.infer<typeof updateUserSchema>
