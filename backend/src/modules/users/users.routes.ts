@@ -1,30 +1,17 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import {
-  listUsers,
-  getUser,
-  updateUser,
-  deleteUser,
-} from '../controllers/users.controller'
-import { requireAdmin } from '../middleware/auth.middleware'
+import { listUsers, getUser, updateUser, deleteUser } from './users.controller'
+import { requireAdmin } from '../../shared/middleware/auth.middleware'
+import { updateUserSchema, userResponseSchema, userIdParamSchema } from './users.schema'
 
-const userSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string(),
-  role: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-})
-
-const adminRoutes: FastifyPluginAsyncZod = async (fastify) => {
+const usersRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/users', {
     onRequest: [requireAdmin],
     schema: {
       tags: ['Admin'],
       summary: 'Listar todos os utilizadores',
       security: [{ bearerAuth: [] }],
-      response: { 200: z.array(userSchema) },
+      response: { 200: z.array(userResponseSchema) },
     },
     handler: listUsers,
   })
@@ -35,8 +22,8 @@ const adminRoutes: FastifyPluginAsyncZod = async (fastify) => {
       tags: ['Admin'],
       summary: 'Detalhes de um utilizador',
       security: [{ bearerAuth: [] }],
-      params: z.object({ id: z.string() }),
-      response: { 200: userSchema },
+      params: userIdParamSchema,
+      response: { 200: userResponseSchema },
     },
     handler: getUser,
   })
@@ -47,14 +34,9 @@ const adminRoutes: FastifyPluginAsyncZod = async (fastify) => {
       tags: ['Admin'],
       summary: 'Atualizar utilizador',
       security: [{ bearerAuth: [] }],
-      params: z.object({ id: z.string() }),
-      body: z.object({
-        name: z.string().min(2).optional(),
-        email: z.string().email().optional(),
-        role: z.enum(['USER', 'ADMIN']).optional(),
-        password: z.string().min(6).optional(),
-      }),
-      response: { 200: userSchema },
+      params: userIdParamSchema,
+      body: updateUserSchema,
+      response: { 200: userResponseSchema },
     },
     handler: updateUser,
   })
@@ -65,10 +47,10 @@ const adminRoutes: FastifyPluginAsyncZod = async (fastify) => {
       tags: ['Admin'],
       summary: 'Eliminar utilizador',
       security: [{ bearerAuth: [] }],
-      params: z.object({ id: z.string() }),
+      params: userIdParamSchema,
     },
     handler: deleteUser,
   })
 }
 
-export default adminRoutes
+export default usersRoutes

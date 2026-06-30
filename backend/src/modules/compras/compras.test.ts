@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { FastifyInstance } from 'fastify'
-import { buildApp } from '../src/app'
-import { prismaMock } from './mocks/prisma'
+import { buildApp } from '../../app'
+import { prismaMock } from '../../../tests/mocks/prisma'
 
 describe('compras routes (N8N)', () => {
   let app: FastifyInstance

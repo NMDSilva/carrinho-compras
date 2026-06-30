@@ -7,9 +7,9 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-} from '../controllers/products.controller'
-import { requireAuth } from '../middleware/auth.middleware'
-import { productBodySchema } from '../schemas/products.schema'
+} from './products.controller'
+import { requireAuth } from '../../shared/middleware/auth.middleware'
+import { productBodySchema, productIdParamSchema, productQuerySchema } from './products.schema'
 
 const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/categories', {
@@ -25,10 +25,7 @@ const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
     schema: {
       tags: ['Produtos'],
       summary: 'Listar produtos',
-      querystring: z.object({
-        search: z.string().optional(),
-        category: z.string().optional(),
-      }),
+      querystring: productQuerySchema,
     },
     handler: getProducts,
   })
@@ -37,7 +34,7 @@ const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
     schema: {
       tags: ['Produtos'],
       summary: 'Detalhes de um produto',
-      params: z.object({ id: z.string() }),
+      params: productIdParamSchema,
     },
     handler: getProduct,
   })
@@ -59,7 +56,7 @@ const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
       tags: ['Produtos'],
       summary: 'Atualizar produto',
       security: [{ bearerAuth: [] }],
-      params: z.object({ id: z.string() }),
+      params: productIdParamSchema,
       body: productBodySchema.partial(),
     },
     handler: updateProduct,
@@ -71,7 +68,7 @@ const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
       tags: ['Produtos'],
       summary: 'Eliminar produto',
       security: [{ bearerAuth: [] }],
-      params: z.object({ id: z.string() }),
+      params: productIdParamSchema,
     },
     handler: deleteProduct,
   })

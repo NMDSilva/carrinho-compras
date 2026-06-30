@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { FastifyInstance } from 'fastify'
-import { buildApp } from '../src/app'
-import { prismaMock } from './mocks/prisma'
-import { authHeader } from './helpers'
+import { buildApp } from '../../app'
+import { prismaMock } from '../../../tests/mocks/prisma'
+import { authHeader } from '../../../tests/helpers'
 
 describe('supermarkets routes', () => {
   let app: FastifyInstance

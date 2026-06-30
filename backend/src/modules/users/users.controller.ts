@@ -1,28 +1,11 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
-import { z } from 'zod'
 import bcrypt from 'bcryptjs'
-import prisma from '../lib/prisma'
-import { getAuthUser } from '../middleware/auth.middleware'
-
-const updateUserSchema = z.object({
-  name: z.string().min(2).optional(),
-  email: z.string().email().optional(),
-  role: z.enum(['USER', 'ADMIN']).optional(),
-  password: z.string().min(6).optional(),
-})
+import { getAuthUser } from '../../shared/middleware/auth.middleware'
+import { updateUserSchema } from './users.schema'
+import * as usersService from './users.service'
 
 export async function listUsers(_request: FastifyRequest, reply: FastifyReply) {
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-    orderBy: { createdAt: 'asc' },
-  })
+  const users = await usersService.listUsers()
   return reply.send(users)
 }
 
@@ -31,17 +14,7 @@ export async function getUser(
   reply: FastifyReply
 ) {
   const id = Number(request.params.id)
-  const user = await prisma.user.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  })
+  const user = await usersService.getUserById(id)
   if (!user)
     return reply.status(404).send({ error: 'Utilizador não encontrado' })
   return reply.send(user)
@@ -61,14 +34,12 @@ export async function updateUser(
       .send({ error: 'Não pode alterar o seu próprio papel de administrador' })
   }
 
-  const existing = await prisma.user.findUnique({ where: { id } })
+  const existing = await usersService.findUserById(id)
   if (!existing)
     return reply.status(404).send({ error: 'Utilizador não encontrado' })
 
   if (data.email && data.email !== existing.email) {
-    const emailTaken = await prisma.user.findUnique({
-      where: { email: data.email },
-    })
+    const emailTaken = await usersService.findUserByEmail(data.email)
     if (emailTaken) return reply.status(409).send({ error: 'Email já em uso' })
   }
 
@@ -78,18 +49,7 @@ export async function updateUser(
   if (data.role) updateData.role = data.role
   if (data.password) updateData.password = await bcrypt.hash(data.password, 12)
 
-  const user = await prisma.user.update({
-    where: { id },
-    data: updateData,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  })
+  const user = await usersService.updateUser(id, updateData)
   return reply.send(user)
 }
 
@@ -106,10 +66,10 @@ export async function deleteUser(
       .send({ error: 'Não pode eliminar a sua própria conta' })
   }
 
-  const existing = await prisma.user.findUnique({ where: { id } })
+  const existing = await usersService.findUserById(id)
   if (!existing)
     return reply.status(404).send({ error: 'Utilizador não encontrado' })
 
-  await prisma.user.delete({ where: { id } })
+  await usersService.deleteUser(id)
   return reply.status(204).send()
 }

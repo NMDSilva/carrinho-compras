@@ -1,7 +1,23 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
-import { z } from 'zod'
-import { getPrices, getPriceById, createPrice, updatePrice, deletePrice, compareProductPrices, getPriceHistory, getDashboardStats } from '../controllers/prices.controller'
-import { requireAuth } from '../middleware/auth.middleware'
+import {
+  getPrices,
+  getPriceById,
+  createPrice,
+  updatePrice,
+  deletePrice,
+  compareProductPrices,
+  getPriceHistory,
+  getDashboardStats,
+} from './prices.controller'
+import { requireAuth } from '../../shared/middleware/auth.middleware'
+import {
+  priceCreateBodySchema,
+  priceUpdateBodySchema,
+  priceIdParamSchema,
+  productIdParamSchema,
+  priceListQuerySchema,
+  priceHistoryQuerySchema,
+} from './prices.schema'
 
 const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/dashboard', {
@@ -13,7 +29,7 @@ const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
     schema: {
       tags: ['Preços'],
       summary: 'Comparar preços de um produto entre supermercados',
-      params: z.object({ productId: z.string() }),
+      params: productIdParamSchema,
     },
     handler: compareProductPrices,
   })
@@ -22,8 +38,8 @@ const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
     schema: {
       tags: ['Preços'],
       summary: 'Histórico de preços de um produto',
-      params: z.object({ productId: z.string() }),
-      querystring: z.object({ supermarketIds: z.string().optional() }),
+      params: productIdParamSchema,
+      querystring: priceHistoryQuerySchema,
     },
     handler: getPriceHistory,
   })
@@ -32,12 +48,7 @@ const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
     schema: {
       tags: ['Preços'],
       summary: 'Listar preços com paginação',
-      querystring: z.object({
-        productId: z.string().optional(),
-        supermarketId: z.string().optional(),
-        limit: z.string().optional(),
-        offset: z.string().optional(),
-      }),
+      querystring: priceListQuerySchema,
     },
     handler: getPrices,
   })
@@ -46,7 +57,7 @@ const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
     schema: {
       tags: ['Preços'],
       summary: 'Obter preço por ID',
-      params: z.object({ id: z.string() }),
+      params: priceIdParamSchema,
     },
     handler: getPriceById,
   })
@@ -57,14 +68,7 @@ const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
       tags: ['Preços'],
       summary: 'Registar preço',
       security: [{ bearerAuth: [] }],
-      body: z.object({
-        productId: z.number().int().positive(),
-        supermarketId: z.number().int().positive(),
-        price: z.number().positive(),
-        quantity: z.number().positive().default(1),
-        date: z.string().datetime().optional(),
-        notes: z.string().nullable().optional(),
-      }),
+      body: priceCreateBodySchema,
     },
     handler: createPrice,
   })
@@ -75,15 +79,8 @@ const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
       tags: ['Preços'],
       summary: 'Atualizar preço',
       security: [{ bearerAuth: [] }],
-      params: z.object({ id: z.string() }),
-      body: z.object({
-        productId: z.number().int().positive().optional(),
-        supermarketId: z.number().int().positive().optional(),
-        price: z.number().positive().optional(),
-        quantity: z.number().positive().optional(),
-        date: z.string().datetime().optional(),
-        notes: z.string().nullable().optional(),
-      }),
+      params: priceIdParamSchema,
+      body: priceUpdateBodySchema,
     },
     handler: updatePrice,
   })
@@ -94,7 +91,7 @@ const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
       tags: ['Preços'],
       summary: 'Eliminar preço',
       security: [{ bearerAuth: [] }],
-      params: z.object({ id: z.string() }),
+      params: priceIdParamSchema,
     },
     handler: deletePrice,
   })
