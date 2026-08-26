@@ -5,4 +5,4 @@ dist/
 *.db-journal
 .DS_Store
 Thumbs.db
-.claude/
+.claude/settings.local.json
