@@ -1,16 +1,16 @@
 ---
 name: verify
-description: Runs the full monorepo verification (build shared, backend + frontend tests, frontend type-check) in the correct order. Use before considering backend or frontend changes done, or when the user asks to verify, check, or validate the project.
+description: Corre a verificação completa do monorepo (build do shared, testes de backend + frontend, type-check do frontend) pela ordem correta. Usar antes de considerar terminadas alterações de backend ou frontend, ou quando o utilizador pedir para verificar, confirmar ou validar o projeto.
 ---
 
-Run these steps in order, from the repo root, stopping and reporting on the first failure:
+Corre estes passos por ordem, a partir da raiz do repositório, parando e reportando ao primeiro erro:
 
-1. `npm run build -w shared` — backend and frontend import `@carrinho/shared`'s compiled `dist/`; stale or missing output causes confusing downstream failures.
-2. `npm run lint` — ESLint across all workspaces (root `eslint.config.mjs`).
-3. `npm run test -w backend` — vitest, Prisma mocked via `vitest-mock-extended`.
-4. `npm run test -w frontend` — vitest with `NODE_OPTIONS=--no-experimental-webstorage` (already set by the workspace's `test` script — don't invoke `vitest` directly here, or `localStorage`-dependent tests may behave differently).
+1. `npm run build -w shared` — o backend e o frontend importam o `dist/` compilado do `@carrinho/shared`; output desatualizado ou em falta causa falhas confusas mais à frente.
+2. `npm run lint` — ESLint em todos os workspaces (`eslint.config.mjs` na raiz).
+3. `npm run test -w backend` — vitest, com Prisma mockado via `vitest-mock-extended`.
+4. `npm run test -w frontend` — vitest com `NODE_OPTIONS=--no-experimental-webstorage` (já definido pelo script `test` do workspace — não invocar `vitest` diretamente aqui, ou testes dependentes de `localStorage` podem comportar-se de forma diferente).
 5. `npm run type-check -w frontend` — `vue-tsc --noEmit`.
 
-If only one workspace changed (e.g. only `backend/`), steps 1 and the other workspace's test step can be skipped — but still rebuild `shared` first if its schemas or types changed.
+Se só um workspace mudou (ex: só `backend/`), o passo 1 e o teste do outro workspace podem ser saltados — mas builda sempre o `shared` primeiro se os seus schemas ou tipos mudaram.
 
-Report a short pass/fail summary per step, not raw command output.
+Reporta um resumo curto de sucesso/falha por passo, não o output em bruto dos comandos.
