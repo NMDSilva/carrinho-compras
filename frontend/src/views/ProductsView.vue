@@ -4,6 +4,7 @@ import { productsApi } from '@/api'
 import { useRoute, useRouter } from 'vue-router'
 import type { Product } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
+import { extractApiError } from '@/utils/errors'
 
 const products = ref<Product[]>([])
 const categories = ref<string[]>([])
@@ -98,8 +99,7 @@ async function saveProduct() {
     await loadProducts()
     await loadCategories()
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } }
-    formError.value = err.response?.data?.error ?? 'Erro ao guardar produto'
+    formError.value = extractApiError(e, 'Erro ao guardar produto')
   } finally {
     saving.value = false
   }

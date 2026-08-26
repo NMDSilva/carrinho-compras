@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { pricesApi, productsApi, supermarketsApi } from '@/api'
 import type { PriceRecord, Product, Supermarket } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
+import { extractApiError } from '@/utils/errors'
 
 const prices = ref<PriceRecord[]>([])
 const products = ref<Product[]>([])
@@ -133,8 +134,7 @@ async function save() {
     showModal.value = false
     await loadPrices()
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } }
-    formError.value = err.response?.data?.error ?? 'Erro ao guardar'
+    formError.value = extractApiError(e, 'Erro ao guardar')
   } finally {
     saving.value = false
   }

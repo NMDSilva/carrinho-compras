@@ -46,7 +46,7 @@ describe('LoginView', () => {
   })
 
   it('mostra erro quando o login falha', async () => {
-    fetchMock.mockRejectedValueOnce({ response: { data: { error: 'Credenciais inválidas' } } })
+    fetchMock.mockRejectedValueOnce({ data: { error: 'Credenciais inválidas' } })
     const router = await setupRouter()
     const wrapper = mount(LoginView, { global: { plugins: [router] } })
 

@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { supermarketsApi } from '@/api'
 import type { Supermarket } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
+import { extractApiError } from '@/utils/errors'
 
 const supermarkets = ref<Supermarket[]>([])
 const loading = ref(true)
@@ -59,8 +60,7 @@ async function save() {
     showModal.value = false
     await loadSupermarkets()
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } }
-    formError.value = err.response?.data?.error ?? 'Erro ao guardar'
+    formError.value = extractApiError(e, 'Erro ao guardar')
   } finally {
     saving.value = false
   }

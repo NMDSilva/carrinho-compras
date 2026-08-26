@@ -4,6 +4,7 @@ import { usersApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import type { User } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
+import { extractApiError } from '@/utils/errors'
 
 const auth = useAuthStore()
 const users = ref<User[]>([])
@@ -56,8 +57,7 @@ async function saveEdit() {
     if (idx !== -1) users.value[idx] = updated
     showEditModal.value = false
   } catch (e: unknown) {
-    const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    editError.value = msg ?? 'Erro ao guardar alterações'
+    editError.value = extractApiError(e, 'Erro ao guardar alterações')
   } finally {
     editLoading.value = false
   }
@@ -77,8 +77,7 @@ async function confirmDelete() {
     showDeleteConfirm.value = false
     deleteTarget.value = null
   } catch (e: unknown) {
-    const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    error.value = msg ?? 'Erro ao eliminar utilizador'
+    error.value = extractApiError(e, 'Erro ao eliminar utilizador')
     showDeleteConfirm.value = false
   } finally {
     deleteLoading.value = false

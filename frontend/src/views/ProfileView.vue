@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { extractApiError } from '@/utils/errors'
 
 const auth = useAuthStore()
 
@@ -23,8 +24,7 @@ async function saveInfo() {
     infoSuccess.value = true
     setTimeout(() => { infoSuccess.value = false }, 3000)
   } catch (e: unknown) {
-    const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    infoError.value = msg ?? 'Erro ao guardar alterações'
+    infoError.value = extractApiError(e, 'Erro ao guardar alterações')
   } finally {
     infoLoading.value = false
   }
@@ -59,8 +59,7 @@ async function savePassword() {
     pwForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
     setTimeout(() => { pwSuccess.value = false }, 3000)
   } catch (e: unknown) {
-    const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    pwError.value = msg ?? 'Erro ao alterar password'
+    pwError.value = extractApiError(e, 'Erro ao alterar password')
   } finally {
     pwLoading.value = false
   }

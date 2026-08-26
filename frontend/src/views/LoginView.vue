@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { extractApiError } from '@/utils/errors'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -28,8 +29,7 @@ async function submit() {
     const redirect = (router.currentRoute.value.query.redirect as string) ?? '/'
     router.push(redirect)
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } }
-    error.value = err.response?.data?.error ?? 'Ocorreu um erro, tenta novamente'
+    error.value = extractApiError(e, 'Ocorreu um erro, tenta novamente')
   } finally {
     loading.value = false
   }
