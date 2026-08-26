@@ -74,3 +74,6 @@ jobs:
             npx prisma migrate deploy
             pm2 restart carrinho-compras || pm2 start dist/server.js --name carrinho-compras --cwd ~/carrinho-compras/backend
             pm2 save
+            chmod +x ~/carrinho-compras/backend/scripts/backup-db.sh
+            CRON_LINE="15 3 * * * cd ~/carrinho-compras/backend && ./scripts/backup-db.sh >> ~/backup-db.log 2>&1"
+            (crontab -l 2>/dev/null | grep -vF 'backup-db.sh'; echo "$CRON_LINE") | crontab -

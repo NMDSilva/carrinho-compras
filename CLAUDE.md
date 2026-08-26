@@ -47,6 +47,17 @@ Se trabalhares em `backend` ou `frontend` isoladamente (sem passar por `npm run 
 - Se `JWT_SECRET` não estiver definido, a app cai silenciosamente para `'dev-secret'` — nunca publicar sem o definir explicitamente.
 - Se `N8N_API_KEY` não estiver definido, `/api/compras` responde 500 em vez de negar acesso.
 
+## Backups
+
+`backend/scripts/backup-db.sh` faz `pg_dump` diário e envia para um bucket GCS (`gs://$BACKUP_GCS_BUCKET/backups/`). É instalado como cron job (03:15) pelo próprio workflow de deploy, via `crontab`.
+
+**Setup manual necessário na VM (ainda não feito por CI):**
+1. Criar o bucket GCS e garantir que a conta usada na VM tem permissão de escrita (`roles/storage.objectCreator` ou superior).
+2. Adicionar `BACKUP_GCS_BUCKET=<nome-do-bucket>` ao secret `ENV_FILE` do GitHub (é escrito em `backend/.env` a cada deploy).
+3. Confirmar que a VM tem o `gcloud` CLI instalado e autenticado (`gcloud auth list`) — sem isto o cron falha silenciosamente (verificar `~/backup-db.log` na VM).
+
+Sem `BACKUP_GCS_BUCKET` definido, o script falha explicitamente (não faz backup silencioso a "lado nenhum").
+
 ## Convenções do repositório
 
 - Branches: `feature/<descrição>`.
