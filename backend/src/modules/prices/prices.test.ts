@@ -83,6 +83,44 @@ describe('prices routes', () => {
     expect(res.json()).toMatchObject({ prices: [] })
   })
 
+  it('elimina preço próprio', async () => {
+    prismaMock.priceRecord.findUnique.mockResolvedValueOnce({ id: 1, createdById: 1 } as never)
+    prismaMock.priceRecord.delete.mockResolvedValueOnce({} as never)
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/api/prices/1',
+      headers: authHeader(app, { sub: 1, role: 'USER' }),
+    })
+
+    expect(res.statusCode).toBe(204)
+  })
+
+  it('rejeita eliminação de preço de outro utilizador', async () => {
+    prismaMock.priceRecord.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/api/prices/1',
+      headers: authHeader(app, { sub: 1, role: 'USER' }),
+    })
+
+    expect(res.statusCode).toBe(403)
+  })
+
+  it('admin elimina preço de outro utilizador', async () => {
+    prismaMock.priceRecord.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+    prismaMock.priceRecord.delete.mockResolvedValueOnce({} as never)
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/api/prices/1',
+      headers: authHeader(app, { sub: 99, role: 'ADMIN' }),
+    })
+
+    expect(res.statusCode).toBe(204)
+  })
+
   it('devolve estatísticas do dashboard', async () => {
     prismaMock.product.count.mockResolvedValueOnce(2)
     prismaMock.supermarket.count.mockResolvedValueOnce(1)

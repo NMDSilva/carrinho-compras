@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { getAuthUser } from '../../shared/middleware/auth.middleware'
+import { canWriteResource } from '../../shared/lib/ownership'
 import { priceRecordSchema } from './prices.schema'
 import * as pricesService from './prices.service'
 
@@ -25,14 +26,29 @@ export async function getPriceById(request: FastifyRequest<{ Params: { id: strin
 }
 
 export async function updatePrice(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  const id = Number(request.params.id)
+  const existing = await pricesService.getPriceById(id)
+  if (!existing) return reply.status(404).send({ error: 'Registo não encontrado' })
+
+  const { userId, userRole } = getAuthUser(request)
+  if (!canWriteResource(userRole, userId, existing.createdById))
+    return reply.status(403).send({ error: 'Sem permissão para editar este registo' })
+
   const data = priceRecordSchema.partial().parse(request.body)
-  const { userId } = getAuthUser(request)
-  const price = await pricesService.updatePrice(Number(request.params.id), data, userId)
+  const price = await pricesService.updatePrice(id, data, userId)
   return reply.send(price)
 }
 
 export async function deletePrice(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
-  await pricesService.deletePrice(Number(request.params.id))
+  const id = Number(request.params.id)
+  const existing = await pricesService.getPriceById(id)
+  if (!existing) return reply.status(404).send({ error: 'Registo não encontrado' })
+
+  const { userId, userRole } = getAuthUser(request)
+  if (!canWriteResource(userRole, userId, existing.createdById))
+    return reply.status(403).send({ error: 'Sem permissão para eliminar este registo' })
+
+  await pricesService.deletePrice(id)
   return reply.status(204).send()
 }
 

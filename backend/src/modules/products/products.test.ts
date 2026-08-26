@@ -74,7 +74,8 @@ describe('products routes', () => {
     expect(res.statusCode).toBe(400)
   })
 
-  it('elimina produto autenticado', async () => {
+  it('elimina produto próprio', async () => {
+    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 1, createdById: 1 } as never)
     prismaMock.product.delete.mockResolvedValueOnce({} as never)
 
     const res = await app.inject({
@@ -84,5 +85,43 @@ describe('products routes', () => {
     })
 
     expect(res.statusCode).toBe(204)
+  })
+
+  it('rejeita eliminação de produto de outro utilizador', async () => {
+    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/api/products/1',
+      headers: authHeader(app, { sub: 1, role: 'USER' }),
+    })
+
+    expect(res.statusCode).toBe(403)
+  })
+
+  it('admin elimina produto de outro utilizador', async () => {
+    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+    prismaMock.product.delete.mockResolvedValueOnce({} as never)
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/api/products/1',
+      headers: authHeader(app, { sub: 99, role: 'ADMIN' }),
+    })
+
+    expect(res.statusCode).toBe(204)
+  })
+
+  it('rejeita atualização de produto de outro utilizador', async () => {
+    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/products/1',
+      headers: authHeader(app, { sub: 1, role: 'USER' }),
+      payload: { name: 'Leite meio gordo' },
+    })
+
+    expect(res.statusCode).toBe(403)
   })
 })

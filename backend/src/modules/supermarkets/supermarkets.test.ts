@@ -61,13 +61,39 @@ describe('supermarkets routes', () => {
     expect(res.statusCode).toBe(401)
   })
 
-  it('elimina supermercado autenticado', async () => {
+  it('elimina supermercado próprio', async () => {
+    prismaMock.supermarket.findUnique.mockResolvedValueOnce({ id: 1, createdById: 1 } as never)
     prismaMock.supermarket.delete.mockResolvedValueOnce({} as never)
 
     const res = await app.inject({
       method: 'DELETE',
       url: '/api/supermarkets/1',
       headers: authHeader(app, { sub: 1, role: 'USER' }),
+    })
+
+    expect(res.statusCode).toBe(204)
+  })
+
+  it('rejeita eliminação de supermercado de outro utilizador', async () => {
+    prismaMock.supermarket.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/api/supermarkets/1',
+      headers: authHeader(app, { sub: 1, role: 'USER' }),
+    })
+
+    expect(res.statusCode).toBe(403)
+  })
+
+  it('admin elimina supermercado de outro utilizador', async () => {
+    prismaMock.supermarket.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+    prismaMock.supermarket.delete.mockResolvedValueOnce({} as never)
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/api/supermarkets/1',
+      headers: authHeader(app, { sub: 99, role: 'ADMIN' }),
     })
 
     expect(res.statusCode).toBe(204)

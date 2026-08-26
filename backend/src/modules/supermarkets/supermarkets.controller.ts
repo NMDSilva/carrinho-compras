@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { getAuthUser } from '../../shared/middleware/auth.middleware'
+import { canWriteResource } from '../../shared/lib/ownership'
 import { supermarketBodySchema } from './supermarkets.schema'
 import * as supermarketsService from './supermarkets.service'
 
@@ -22,13 +23,28 @@ export async function createSupermarket(request: FastifyRequest, reply: FastifyR
 }
 
 export async function updateSupermarket(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  const id = Number(request.params.id)
+  const existing = await supermarketsService.getSupermarketById(id)
+  if (!existing) return reply.status(404).send({ error: 'Supermercado não encontrado' })
+
+  const { userId, userRole } = getAuthUser(request)
+  if (!canWriteResource(userRole, userId, existing.createdById))
+    return reply.status(403).send({ error: 'Sem permissão para editar este supermercado' })
+
   const data = supermarketBodySchema.partial().parse(request.body)
-  const { userId } = getAuthUser(request)
-  const supermarket = await supermarketsService.updateSupermarket(Number(request.params.id), data, userId)
+  const supermarket = await supermarketsService.updateSupermarket(id, data, userId)
   return reply.send(supermarket)
 }
 
 export async function deleteSupermarket(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
-  await supermarketsService.deleteSupermarket(Number(request.params.id))
+  const id = Number(request.params.id)
+  const existing = await supermarketsService.getSupermarketById(id)
+  if (!existing) return reply.status(404).send({ error: 'Supermercado não encontrado' })
+
+  const { userId, userRole } = getAuthUser(request)
+  if (!canWriteResource(userRole, userId, existing.createdById))
+    return reply.status(403).send({ error: 'Sem permissão para eliminar este supermercado' })
+
+  await supermarketsService.deleteSupermarket(id)
   return reply.status(204).send()
 }
