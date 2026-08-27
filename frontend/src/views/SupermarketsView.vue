@@ -3,28 +3,23 @@ import { ref, onMounted } from 'vue'
 import { supermarketsApi } from '@/api'
 import type { Supermarket } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
-import { extractApiError } from '@/utils/errors'
+import { useAsyncAction } from '@/composables/useAsyncAction'
 
 const supermarkets = ref<Supermarket[]>([])
-const loading = ref(true)
+const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar supermercados')
 
 const showModal = ref(false)
 const editingItem = ref<Supermarket | null>(null)
-const saving = ref(false)
-const formError = ref('')
 const form = ref({ name: '', location: '' })
+const { loading: saving, error: formError, run: runSave } = useAsyncAction('Erro ao guardar')
 
 const deleteTarget = ref<Supermarket | null>(null)
 const showDeleteConfirm = ref(false)
-const deleting = ref(false)
+const { loading: deleting, error: deleteError, run: runDelete } = useAsyncAction('Erro ao eliminar')
 
 async function loadSupermarkets() {
-  loading.value = true
-  try {
-    supermarkets.value = await supermarketsApi.getAll()
-  } finally {
-    loading.value = false
-  }
+  const result = await runLoad(() => supermarketsApi.getAll())
+  if (result !== undefined) supermarkets.value = result
 }
 
 onMounted(loadSupermarkets)
@@ -48,21 +43,17 @@ async function save() {
     formError.value = 'Nome é obrigatório'
     return
   }
-  saving.value = true
-  formError.value = ''
-  try {
+  const result = await runSave(async () => {
     const data = { name: form.value.name, location: form.value.location || null }
     if (editingItem.value) {
       await supermarketsApi.update(editingItem.value.id, data)
     } else {
       await supermarketsApi.create(data)
     }
+  })
+  if (result !== undefined) {
     showModal.value = false
     await loadSupermarkets()
-  } catch (e: unknown) {
-    formError.value = extractApiError(e, 'Erro ao guardar')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -73,14 +64,12 @@ function openDeleteConfirm(s: Supermarket) {
 
 async function confirmDelete() {
   if (!deleteTarget.value) return
-  deleting.value = true
-  try {
-    await supermarketsApi.delete(deleteTarget.value.id)
+  const target = deleteTarget.value
+  const result = await runDelete(() => supermarketsApi.delete(target.id))
+  if (result !== undefined) {
     showDeleteConfirm.value = false
     deleteTarget.value = null
     await loadSupermarkets()
-  } finally {
-    deleting.value = false
   }
 }
 </script>
@@ -102,6 +91,10 @@ async function confirmDelete() {
 
     <div v-if="loading" class="flex items-center justify-center h-40">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+    </div>
+
+    <div v-else-if="error || deleteError" class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+      {{ error || deleteError }}
     </div>
 
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

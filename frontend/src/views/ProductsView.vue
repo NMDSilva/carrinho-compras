@@ -4,13 +4,13 @@ import { productsApi } from '@/api'
 import { useRoute, useRouter } from 'vue-router'
 import type { Product } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
-import { extractApiError } from '@/utils/errors'
+import { useAsyncAction } from '@/composables/useAsyncAction'
 
 const products = ref<Product[]>([])
 const categories = ref<string[]>([])
-const loading = ref(true)
 const search = ref('')
 const filterCategory = ref('')
+const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar produtos')
 
 let searchDebounce: ReturnType<typeof setTimeout> | undefined
 watch(search, () => {
@@ -20,13 +20,12 @@ watch(search, () => {
 
 const showModal = ref(false)
 const editingProduct = ref<Product | null>(null)
-const saving = ref(false)
-const formError = ref('')
 const form = ref({ name: '', brand: '', unit: 'un', category: '' })
+const { loading: saving, error: formError, run: runSave } = useAsyncAction('Erro ao guardar produto')
 
 const deleteTarget = ref<Product | null>(null)
 const showDeleteConfirm = ref(false)
-const deleting = ref(false)
+const { loading: deleting, error: deleteError, run: runDelete } = useAsyncAction('Erro ao eliminar produto')
 
 const route = useRoute()
 const router = useRouter()
@@ -34,15 +33,13 @@ const router = useRouter()
 const UNITS = ['un', 'kg', 'g', 'L', 'ml', 'cx', 'pac', 'dz']
 
 async function loadProducts() {
-  loading.value = true
-  try {
-    products.value = await productsApi.getAll({
+  const result = await runLoad(() =>
+    productsApi.getAll({
       search: search.value || undefined,
       category: filterCategory.value || undefined,
     })
-  } finally {
-    loading.value = false
-  }
+  )
+  if (result !== undefined) products.value = result
 }
 
 async function loadCategories() {
@@ -86,9 +83,7 @@ async function saveProduct() {
     formError.value = 'Nome e unidade são obrigatórios'
     return
   }
-  saving.value = true
-  formError.value = ''
-  try {
+  const result = await runSave(async () => {
     const data = {
       name: form.value.name,
       brand: form.value.brand || null,
@@ -100,13 +95,11 @@ async function saveProduct() {
     } else {
       await productsApi.create(data)
     }
+  })
+  if (result !== undefined) {
     showModal.value = false
     await loadProducts()
     await loadCategories()
-  } catch (e: unknown) {
-    formError.value = extractApiError(e, 'Erro ao guardar produto')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -117,14 +110,12 @@ function openDeleteConfirm(product: Product) {
 
 async function confirmDelete() {
   if (!deleteTarget.value) return
-  deleting.value = true
-  try {
-    await productsApi.delete(deleteTarget.value.id)
+  const target = deleteTarget.value
+  const result = await runDelete(() => productsApi.delete(target.id))
+  if (result !== undefined) {
     showDeleteConfirm.value = false
     deleteTarget.value = null
     await loadProducts()
-  } finally {
-    deleting.value = false
   }
 }
 </script>
@@ -180,6 +171,12 @@ async function confirmDelete() {
         <div
           class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"
         ></div>
+      </div>
+      <div
+        v-else-if="error || deleteError"
+        class="bg-red-50 border border-red-200 rounded-lg p-4 m-6 text-red-700 text-sm"
+      >
+        {{ error || deleteError }}
       </div>
       <table v-else class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-100">

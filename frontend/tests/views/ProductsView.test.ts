@@ -3,9 +3,10 @@ import { mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import ProductsView from '@/views/ProductsView.vue'
 
-const { getAllMock, getCategoriesMock } = vi.hoisted(() => ({
+const { getAllMock, getCategoriesMock, deleteMock } = vi.hoisted(() => ({
   getAllMock: vi.fn(),
   getCategoriesMock: vi.fn(),
+  deleteMock: vi.fn(),
 }))
 
 vi.mock('@/api', () => ({
@@ -14,7 +15,7 @@ vi.mock('@/api', () => ({
     getCategories: getCategoriesMock,
     create: vi.fn(),
     update: vi.fn(),
-    delete: vi.fn(),
+    delete: deleteMock,
   },
 }))
 
@@ -45,7 +46,38 @@ describe('ProductsView', () => {
   beforeEach(() => {
     getAllMock.mockReset()
     getCategoriesMock.mockReset()
+    deleteMock.mockReset()
     getCategoriesMock.mockResolvedValue([])
+  })
+
+  it('mostra a mensagem de erro real quando falha ao carregar a lista', async () => {
+    getAllMock.mockRejectedValue({ data: { error: 'Sessão expirada' } })
+    const router = await setupRouter('/produtos')
+    const wrapper = mount(ProductsView, { global: { plugins: [router] } })
+
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('Sessão expirada')
+  })
+
+  it('mostra a mensagem de erro real quando falha ao eliminar', async () => {
+    getAllMock.mockResolvedValue([product])
+    deleteMock.mockRejectedValue({ data: { error: 'Produto tem preços associados' } })
+    const router = await setupRouter('/produtos')
+    const wrapper = mount(ProductsView, { global: { plugins: [router] } })
+
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('button.btn-danger').trigger('click')
+    await wrapper.vm.$nextTick()
+    const buttons = wrapper.findAll('button')
+    await buttons[buttons.length - 1].trigger('click')
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('Produto tem preços associados')
   })
 
   it('abre o modal de edição ao aceder diretamente ao deep-link', async () => {
