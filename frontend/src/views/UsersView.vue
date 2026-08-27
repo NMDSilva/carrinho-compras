@@ -4,33 +4,24 @@ import { usersApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import type { User } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
-import { extractApiError } from '@/utils/errors'
+import { useAsyncAction } from '@/composables/useAsyncAction'
 
 const auth = useAuthStore()
 const users = ref<User[]>([])
-const loading = ref(true)
-const error = ref('')
+const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar utilizadores')
 
 const showEditModal = ref(false)
 const editTarget = ref<User | null>(null)
 const editForm = ref({ name: '', email: '', role: 'USER' as 'USER' | 'ADMIN', password: '' })
-const editLoading = ref(false)
-const editError = ref('')
+const { loading: editLoading, error: editError, run: runSave } = useAsyncAction('Erro ao guardar alterações')
 
 const deleteTarget = ref<User | null>(null)
 const showDeleteConfirm = ref(false)
-const deleteLoading = ref(false)
+const { loading: deleteLoading, error: deleteError, run: runDelete } = useAsyncAction('Erro ao eliminar utilizador')
 
 async function loadUsers() {
-  loading.value = true
-  error.value = ''
-  try {
-    users.value = await usersApi.getAll()
-  } catch {
-    error.value = 'Erro ao carregar utilizadores'
-  } finally {
-    loading.value = false
-  }
+  const result = await runLoad(() => usersApi.getAll())
+  if (result !== undefined) users.value = result
 }
 
 function openEdit(user: User) {
@@ -42,9 +33,8 @@ function openEdit(user: User) {
 
 async function saveEdit() {
   if (!editTarget.value) return
-  editLoading.value = true
-  editError.value = ''
-  try {
+  const target = editTarget.value
+  const updated = await runSave(async () => {
     const payload: Record<string, string> = {
       name: editForm.value.name,
       email: editForm.value.email,
@@ -52,14 +42,12 @@ async function saveEdit() {
     }
     if (editForm.value.password) payload.password = editForm.value.password
 
-    const updated = await usersApi.update(editTarget.value.id, payload as Parameters<typeof usersApi.update>[1])
+    return usersApi.update(target.id, payload as Parameters<typeof usersApi.update>[1])
+  })
+  if (updated !== undefined) {
     const idx = users.value.findIndex((u) => u.id === updated.id)
     if (idx !== -1) users.value[idx] = updated
     showEditModal.value = false
-  } catch (e: unknown) {
-    editError.value = extractApiError(e, 'Erro ao guardar alterações')
-  } finally {
-    editLoading.value = false
   }
 }
 
@@ -70,17 +58,14 @@ function openDeleteConfirm(user: User) {
 
 async function confirmDelete() {
   if (!deleteTarget.value) return
-  deleteLoading.value = true
-  try {
-    await usersApi.delete(deleteTarget.value.id)
-    users.value = users.value.filter((u) => u.id !== deleteTarget.value!.id)
+  const target = deleteTarget.value
+  const result = await runDelete(() => usersApi.delete(target.id))
+  if (result !== undefined) {
+    users.value = users.value.filter((u) => u.id !== target.id)
     showDeleteConfirm.value = false
     deleteTarget.value = null
-  } catch (e: unknown) {
-    error.value = extractApiError(e, 'Erro ao eliminar utilizador')
+  } else {
     showDeleteConfirm.value = false
-  } finally {
-    deleteLoading.value = false
   }
 }
 
@@ -102,8 +87,8 @@ onMounted(loadUsers)
       <div class="animate-spin w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full"></div>
     </div>
 
-    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
-      {{ error }}
+    <div v-else-if="error || deleteError" class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+      {{ error || deleteError }}
     </div>
 
     <div v-else class="bg-white rounded-xl border border-gray-200 overflow-hidden">

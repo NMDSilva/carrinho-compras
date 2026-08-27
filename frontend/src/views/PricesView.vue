@@ -4,27 +4,26 @@ import { useRoute, useRouter } from 'vue-router'
 import { pricesApi, productsApi, supermarketsApi } from '@/api'
 import type { PriceRecord, Product, Supermarket } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
-import { extractApiError } from '@/utils/errors'
+import { useAsyncAction } from '@/composables/useAsyncAction'
 
 const prices = ref<PriceRecord[]>([])
 const products = ref<Product[]>([])
 const supermarkets = ref<Supermarket[]>([])
-const loading = ref(true)
 const total = ref(0)
 const page = ref(0)
 const PAGE_SIZE = 15
+const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar preços')
 
 const filterProduct = ref<number | ''>('')
 const filterSupermarket = ref<number | ''>('')
 
 const showModal = ref(false)
-const saving = ref(false)
-const formError = ref('')
 const editingPrice = ref<PriceRecord | null>(null)
+const { loading: saving, error: formError, run: runSave } = useAsyncAction('Erro ao guardar')
 
 const deleteTarget = ref<PriceRecord | null>(null)
 const showDeleteConfirm = ref(false)
-const deleting = ref(false)
+const { loading: deleting, error: deleteError, run: runDelete } = useAsyncAction('Erro ao eliminar')
 
 const route = useRoute()
 const router = useRouter()
@@ -42,9 +41,8 @@ const form = ref({
 const totalPages = computed(() => Math.ceil(total.value / PAGE_SIZE))
 
 async function loadPrices() {
-  loading.value = true
-  try {
-    const result = await pricesApi.getAll({
+  const result = await runLoad(() =>
+    pricesApi.getAll({
       productId:
         filterProduct.value !== '' ? Number(filterProduct.value) : undefined,
       supermarketId:
@@ -54,10 +52,10 @@ async function loadPrices() {
       limit: PAGE_SIZE,
       offset: page.value * PAGE_SIZE,
     })
+  )
+  if (result !== undefined) {
     prices.value = result.data
     total.value = result.total
-  } finally {
-    loading.value = false
   }
 }
 
@@ -115,9 +113,7 @@ async function save() {
     formError.value = 'Produto, supermercado e preço são obrigatórios'
     return
   }
-  saving.value = true
-  formError.value = ''
-  try {
+  const result = await runSave(async () => {
     const data = {
       productId: Number(form.value.productId),
       supermarketId: Number(form.value.supermarketId),
@@ -131,12 +127,10 @@ async function save() {
     } else {
       await pricesApi.create(data)
     }
+  })
+  if (result !== undefined) {
     showModal.value = false
     await loadPrices()
-  } catch (e: unknown) {
-    formError.value = extractApiError(e, 'Erro ao guardar')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -147,14 +141,12 @@ function openDeleteConfirm(price: PriceRecord) {
 
 async function confirmDelete() {
   if (!deleteTarget.value) return
-  deleting.value = true
-  try {
-    await pricesApi.delete(deleteTarget.value.id)
+  const target = deleteTarget.value
+  const result = await runDelete(() => pricesApi.delete(target.id))
+  if (result !== undefined) {
     showDeleteConfirm.value = false
     deleteTarget.value = null
     await loadPrices()
-  } finally {
-    deleting.value = false
   }
 }
 
@@ -240,6 +232,12 @@ function formatDate(date: string) {
         <div
           class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"
         ></div>
+      </div>
+      <div
+        v-else-if="error || deleteError"
+        class="bg-red-50 border border-red-200 rounded-lg p-4 m-6 text-red-700 text-sm"
+      >
+        {{ error || deleteError }}
       </div>
       <table v-else class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-100">
