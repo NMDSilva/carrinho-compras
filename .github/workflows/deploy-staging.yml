@@ -5,6 +5,10 @@ on:
     branches:
       - staging
 
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -66,8 +70,9 @@ jobs:
           key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
           command_timeout: 30m
           script: |
+            set -e
             export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh"; fi
             echo "${{ secrets.ENV_FILE_STAGING }}" > ~/carrinho-compras-staging/backend/.env
             chmod 600 ~/carrinho-compras-staging/backend/.env
             cd ~/carrinho-compras-staging/backend

@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -66,8 +70,9 @@ jobs:
           key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
           command_timeout: 30m
           script: |
+            set -e
             export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh"; fi
             echo "${{ secrets.ENV_FILE }}" > ~/carrinho-compras/backend/.env
             chmod 600 ~/carrinho-compras/backend/.env
             cd ~/carrinho-compras/backend
@@ -99,7 +104,7 @@ jobs:
             chmod +x ~/carrinho-compras/backend/scripts/backup-db.sh
             if command -v crontab >/dev/null 2>&1; then
               CRON_LINE="15 3 * * * cd ~/carrinho-compras/backend && ./scripts/backup-db.sh >> ~/backup-db.log 2>&1"
-              (crontab -l 2>/dev/null | grep -vF 'backup-db.sh'; echo "$CRON_LINE") | crontab -
+              (crontab -l 2>/dev/null | grep -vF 'backup-db.sh' || true; echo "$CRON_LINE") | crontab -
             else
               echo "AVISO: crontab não encontrado na VM — backup automático não agendado. Instala o pacote cron (ex.: sudo apt install -y cron) e volta a fazer deploy."
             fi
