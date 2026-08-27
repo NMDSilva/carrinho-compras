@@ -53,15 +53,12 @@ Corre `npm run db:generate` antes de testar/buildar o backend se ainda não o ti
 
 ## Backups
 
-`backend/scripts/backup-db.sh` faz `pg_dump` diário e envia para um bucket GCS (`gs://$BACKUP_GCS_BUCKET/backups/`). É instalado como cron job (03:15) pelo próprio workflow de deploy, via `crontab`.
+`backend/scripts/backup-db.sh` faz `pg_dump` diário e guarda o dump comprimido em `~/backups/carrinho-compras` na própria VM (fora do volume Docker), mantendo só os últimos 14. É instalado como cron job (03:15) pelo próprio workflow de deploy, via `crontab`.
+
+**Decisão deliberada**: backup só local, sem serviço externo (GCS, Drive, etc.) — evita custos adicionais. Protege contra apagar o volume Docker por acidente, migração mal feita ou corrupção, mas **não protege contra perda do disco/VM** (o backup está no mesmo disco que os dados). Se isso vier a ser um problema, mover para um destino fora da VM é a evolução natural.
 
 **Setup manual necessário na VM (ainda não feito por CI):**
 1. Instalar o pacote `cron` na VM se não estiver presente (`sudo apt install -y cron` em Debian/Ubuntu) — sem isto o passo de agendamento no deploy.yml só avisa e não falha o deploy, mas o backup não fica agendado.
-2. Criar o bucket GCS e garantir que a conta usada na VM tem permissão de escrita (`roles/storage.objectCreator` ou superior).
-3. Adicionar `BACKUP_GCS_BUCKET=<nome-do-bucket>` ao secret `ENV_FILE` do GitHub (é escrito em `backend/.env` a cada deploy).
-4. Confirmar que a VM tem o `gcloud` CLI instalado e autenticado (`gcloud auth list`) — sem isto o cron falha silenciosamente (verificar `~/backup-db.log` na VM).
-
-Sem `BACKUP_GCS_BUCKET` definido, o script falha explicitamente (não faz backup silencioso a "lado nenhum").
 
 ## Convenções do repositório
 
