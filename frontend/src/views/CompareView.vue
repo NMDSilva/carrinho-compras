@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { pricesApi, productsApi, supermarketsApi } from '@/api'
 import type { Product, Supermarket, CompareResult, PriceHistory } from '@/types'
+import { extractApiError } from '@/utils/errors'
 
 const products = ref<Product[]>([])
 const supermarkets = ref<Supermarket[]>([])
@@ -12,6 +13,7 @@ const compareResult = ref<CompareResult | null>(null)
 const historyResult = ref<PriceHistory | null>(null)
 const loading = ref(false)
 const loadingHistory = ref(false)
+const error = ref('')
 const activeTab = ref<'compare' | 'history'>('compare')
 
 onMounted(async () => {
@@ -26,6 +28,8 @@ async function loadCompare() {
   loading.value = true
   try {
     compareResult.value = await pricesApi.compare(Number(selectedProduct.value))
+  } catch (e: unknown) {
+    error.value = extractApiError(e, 'Erro ao comparar preços')
   } finally {
     loading.value = false
   }
@@ -39,6 +43,8 @@ async function loadHistory() {
       Number(selectedProduct.value),
       selectedSupermarkets.value.length ? selectedSupermarkets.value : undefined
     )
+  } catch (e: unknown) {
+    error.value = extractApiError(e, 'Erro ao carregar o histórico de preços')
   } finally {
     loadingHistory.value = false
   }
@@ -48,6 +54,7 @@ watch(selectedProduct, () => {
   compareResult.value = null
   historyResult.value = null
   selectedSupermarkets.value = []
+  error.value = ''
   if (selectedProduct.value) {
     loadCompare()
     loadHistory()
@@ -116,6 +123,10 @@ const BG_COLORS = ['bg-brand-500', 'bg-blue-500', 'bg-purple-500', 'bg-orange-50
           </div>
         </div>
       </div>
+    </div>
+
+    <div v-if="error" class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+      {{ error }}
     </div>
 
     <div v-if="!selectedProduct" class="card p-16 text-center text-gray-400">
