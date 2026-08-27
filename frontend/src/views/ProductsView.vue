@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { productsApi } from '@/api'
 import { useRoute, useRouter } from 'vue-router'
 import type { Product } from '@/types'
@@ -11,6 +11,12 @@ const categories = ref<string[]>([])
 const loading = ref(true)
 const search = ref('')
 const filterCategory = ref('')
+
+let searchDebounce: ReturnType<typeof setTimeout> | undefined
+watch(search, () => {
+  clearTimeout(searchDebounce)
+  searchDebounce = setTimeout(loadProducts, 300)
+})
 
 const showModal = ref(false)
 const editingProduct = ref<Product | null>(null)
@@ -43,9 +49,8 @@ async function loadCategories() {
   categories.value = await productsApi.getCategories()
 }
 
-onMounted(() => {
-  loadProducts()
-  loadCategories()
+onMounted(async () => {
+  await Promise.all([loadProducts(), loadCategories()])
 
   if (route.params.id) {
     const product = products.value.find((p) => p.id === Number(route.params.id))
@@ -153,7 +158,6 @@ async function confirmDelete() {
     <div class="flex flex-col sm:flex-row gap-3 mb-6">
       <input
         v-model="search"
-        @input="loadProducts"
         type="text"
         placeholder="Pesquisar produto..."
         class="input max-w-xs"
