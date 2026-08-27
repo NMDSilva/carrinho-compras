@@ -2,16 +2,29 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 
-const { fetchMock } = vi.hoisted(() => ({ fetchMock: vi.fn() }))
+const { loginMock, registerMock, meMock, updateMeMock } = vi.hoisted(() => ({
+  loginMock: vi.fn(),
+  registerMock: vi.fn(),
+  meMock: vi.fn(),
+  updateMeMock: vi.fn(),
+}))
 
-vi.mock('ofetch', () => ({
-  $fetch: fetchMock,
+vi.mock('@/api', () => ({
+  authApi: {
+    login: loginMock,
+    register: registerMock,
+    me: meMock,
+    updateMe: updateMeMock,
+  },
 }))
 
 describe('auth store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    fetchMock.mockReset()
+    loginMock.mockReset()
+    registerMock.mockReset()
+    meMock.mockReset()
+    updateMeMock.mockReset()
     localStorage.clear()
   })
 
@@ -22,7 +35,7 @@ describe('auth store', () => {
   })
 
   it('login guarda o token e o utilizador', async () => {
-    fetchMock.mockResolvedValueOnce({
+    loginMock.mockResolvedValueOnce({
       token: 'abc123',
       user: { id: 1, name: 'Ana', email: 'ana@example.com', role: 'USER' },
     })
@@ -36,7 +49,7 @@ describe('auth store', () => {
   })
 
   it('isAdmin reflete o papel do utilizador', async () => {
-    fetchMock.mockResolvedValueOnce({
+    loginMock.mockResolvedValueOnce({
       token: 'abc123',
       user: { id: 1, name: 'Ana', email: 'ana@example.com', role: 'ADMIN' },
     })
@@ -48,7 +61,7 @@ describe('auth store', () => {
   })
 
   it('logout limpa o estado e o localStorage', async () => {
-    fetchMock.mockResolvedValueOnce({
+    loginMock.mockResolvedValueOnce({
       token: 'abc123',
       user: { id: 1, name: 'Ana', email: 'ana@example.com', role: 'USER' },
     })
@@ -65,11 +78,35 @@ describe('auth store', () => {
   it('fetchMe limpa a sessão quando recebe 401', async () => {
     localStorage.setItem('token', 'expired-token')
     const auth = useAuthStore()
-    fetchMock.mockRejectedValueOnce({ response: { status: 401 } })
+    meMock.mockRejectedValueOnce({ response: { status: 401 } })
 
     await auth.fetchMe()
 
     expect(auth.user).toBeNull()
     expect(localStorage.getItem('token')).toBeNull()
+  })
+
+  it('register guarda o token e o utilizador', async () => {
+    registerMock.mockResolvedValueOnce({
+      token: 'xyz789',
+      user: { id: 2, name: 'Bruno', email: 'bruno@example.com', role: 'USER' },
+    })
+
+    const auth = useAuthStore()
+    await auth.register('Bruno', 'bruno@example.com', 'segredo')
+
+    expect(auth.isAuthenticated).toBe(true)
+    expect(auth.user?.email).toBe('bruno@example.com')
+  })
+
+  it('updateMe atualiza o utilizador em sessão', async () => {
+    localStorage.setItem('token', 'abc123')
+    updateMeMock.mockResolvedValueOnce({ id: 1, name: 'Ana Nova', email: 'ana@example.com', role: 'USER' })
+
+    const auth = useAuthStore()
+    await auth.updateMe({ name: 'Ana Nova' })
+
+    expect(auth.user?.name).toBe('Ana Nova')
+    expect(updateMeMock).toHaveBeenCalledWith({ name: 'Ana Nova' })
   })
 })

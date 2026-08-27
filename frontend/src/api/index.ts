@@ -8,6 +8,7 @@ import type {
   PriceHistory,
   PaginatedPrices,
   User,
+  AuthUser,
 } from '@/types'
 
 const api = $fetch.create({
@@ -28,6 +29,20 @@ const api = $fetch.create({
     }
   },
 })
+
+// Autenticação
+export const authApi = {
+  login: (email: string, password: string) =>
+    api<{ token: string; user: AuthUser }>('/auth/login', { method: 'POST', body: { email, password } }),
+  register: (name: string, email: string, password: string) =>
+    api<{ token: string; user: AuthUser }>('/auth/register', {
+      method: 'POST',
+      body: { name, email, password },
+    }),
+  me: () => api<AuthUser>('/auth/me'),
+  updateMe: (data: { name?: string; email?: string; currentPassword?: string; newPassword?: string }) =>
+    api<AuthUser>('/auth/me', { method: 'PATCH', body: data }),
+}
 
 // Produtos
 export const productsApi = {

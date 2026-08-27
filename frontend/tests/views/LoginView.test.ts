@@ -4,10 +4,13 @@ import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '@/views/LoginView.vue'
 
-const { fetchMock } = vi.hoisted(() => ({ fetchMock: vi.fn() }))
+const { loginMock, registerMock } = vi.hoisted(() => ({
+  loginMock: vi.fn(),
+  registerMock: vi.fn(),
+}))
 
-vi.mock('ofetch', () => ({
-  $fetch: fetchMock,
+vi.mock('@/api', () => ({
+  authApi: { login: loginMock, register: registerMock },
 }))
 
 async function setupRouter() {
@@ -26,7 +29,8 @@ async function setupRouter() {
 describe('LoginView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    fetchMock.mockReset()
+    loginMock.mockReset()
+    registerMock.mockReset()
     localStorage.clear()
   })
 
@@ -46,7 +50,7 @@ describe('LoginView', () => {
   })
 
   it('mostra erro quando o login falha', async () => {
-    fetchMock.mockRejectedValueOnce({ data: { error: 'Credenciais inválidas' } })
+    loginMock.mockRejectedValueOnce({ data: { error: 'Credenciais inválidas' } })
     const router = await setupRouter()
     const wrapper = mount(LoginView, { global: { plugins: [router] } })
 

@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { $fetch } from 'ofetch'
+import { authApi } from '@/api'
 import type { AuthUser } from '@carrinho/shared'
+import type { FetchError } from 'ofetch'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('token'))
@@ -24,12 +25,9 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchMe() {
     if (!token.value) return
     try {
-      user.value = await $fetch<AuthUser>('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token.value}` },
-      })
+      user.value = await authApi.me()
     } catch (err) {
-      const fetchErr = err as { response?: { status?: number }; status?: number } | undefined
-      const status = fetchErr?.response?.status ?? fetchErr?.status
+      const status = (err as FetchError)?.response?.status ?? (err as FetchError)?.status
       console.error('[auth] fetchMe failed:', status, err instanceof Error ? err.message : err)
       if (status === 401) {
         clearAuth()
@@ -38,29 +36,19 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(email: string, password: string) {
-    const res = await $fetch<{ token: string; user: AuthUser }>('/api/auth/login', {
-      method: 'POST',
-      body: { email, password },
-    })
+    const res = await authApi.login(email, password)
     setToken(res.token)
     user.value = res.user
   }
 
   async function register(name: string, email: string, password: string) {
-    const res = await $fetch<{ token: string; user: AuthUser }>('/api/auth/register', {
-      method: 'POST',
-      body: { name, email, password },
-    })
+    const res = await authApi.register(name, email, password)
     setToken(res.token)
     user.value = res.user
   }
 
   async function updateMe(data: { name?: string; email?: string; currentPassword?: string; newPassword?: string }) {
-    user.value = await $fetch<AuthUser>('/api/auth/me', {
-      method: 'PATCH',
-      body: data,
-      headers: { Authorization: `Bearer ${token.value}` },
-    })
+    user.value = await authApi.updateMe(data)
   }
 
   function logout() {
