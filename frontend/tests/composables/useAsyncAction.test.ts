@@ -2,6 +2,16 @@ import { describe, it, expect } from 'vitest'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 
 describe('useAsyncAction', () => {
+  it('loading começa a false por omissão', () => {
+    const { loading } = useAsyncAction()
+    expect(loading.value).toBe(false)
+  })
+
+  it('loading começa a true com immediate:true (evita frame sem spinner antes do onMounted)', () => {
+    const { loading } = useAsyncAction('erro', { immediate: true })
+    expect(loading.value).toBe(true)
+  })
+
   it('marca loading durante a execução e devolve o resultado', async () => {
     const { loading, error, run } = useAsyncAction()
 

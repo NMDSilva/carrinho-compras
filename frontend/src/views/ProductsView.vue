@@ -10,7 +10,7 @@ const products = ref<Product[]>([])
 const categories = ref<string[]>([])
 const search = ref('')
 const filterCategory = ref('')
-const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar produtos')
+const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar produtos', { immediate: true })
 
 let searchDebounce: ReturnType<typeof setTimeout> | undefined
 watch(search, () => {

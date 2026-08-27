@@ -12,7 +12,7 @@ const supermarkets = ref<Supermarket[]>([])
 const total = ref(0)
 const page = ref(0)
 const PAGE_SIZE = 15
-const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar preços')
+const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar preços', { immediate: true })
 
 const filterProduct = ref<number | ''>('')
 const filterSupermarket = ref<number | ''>('')

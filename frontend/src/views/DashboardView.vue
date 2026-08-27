@@ -2,19 +2,14 @@
 import { ref, onMounted } from 'vue'
 import { pricesApi } from '@/api'
 import type { DashboardStats } from '@/types'
+import { useAsyncAction } from '@/composables/useAsyncAction'
 
 const stats = ref<DashboardStats | null>(null)
-const loading = ref(true)
-const error = ref('')
+const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar dashboard', { immediate: true })
 
 onMounted(async () => {
-  try {
-    stats.value = await pricesApi.dashboard()
-  } catch {
-    error.value = 'Erro ao carregar dashboard'
-  } finally {
-    loading.value = false
-  }
+  const result = await runLoad(() => pricesApi.dashboard())
+  if (result !== undefined) stats.value = result
 })
 
 function formatPrice(price: number) {

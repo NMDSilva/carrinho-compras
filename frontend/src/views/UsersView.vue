@@ -8,7 +8,7 @@ import { useAsyncAction } from '@/composables/useAsyncAction'
 
 const auth = useAuthStore()
 const users = ref<User[]>([])
-const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar utilizadores')
+const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar utilizadores', { immediate: true })
 
 const showEditModal = ref(false)
 const editTarget = ref<User | null>(null)

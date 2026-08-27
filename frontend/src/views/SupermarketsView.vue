@@ -6,7 +6,7 @@ import { FormDialog, ConfirmDialog } from '@/components/dialogs'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 
 const supermarkets = ref<Supermarket[]>([])
-const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar supermercados')
+const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar supermercados', { immediate: true })
 
 const showModal = ref(false)
 const editingItem = ref<Supermarket | null>(null)
