@@ -58,7 +58,10 @@ export async function buildApp() {
     },
     transform: jsonSchemaTransform,
   })
-  await app.register(swaggerUi, { routePrefix: '/docs' })
+  // Documentação da API não fica exposta publicamente em produção.
+  if (process.env.NODE_ENV !== 'production') {
+    await app.register(swaggerUi, { routePrefix: '/docs' })
+  }
 
   app.decorate(
     'authenticate',
