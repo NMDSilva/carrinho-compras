@@ -4,7 +4,7 @@ Este ficheiro fornece orientação ao Claude Code (claude.ai/code) ao trabalhar 
 
 ## Visão geral
 
-Monorepo (npm workspaces) para uma aplicação de comparação de preços de supermercado: `shared` (schemas Zod + tipos), `backend` (API Fastify + Prisma), `frontend` (SPA Vue 3). Não existe README — este ficheiro é a fonte de verdade principal.
+Monorepo (npm workspaces) para uma aplicação de comparação de preços de supermercado: `shared` (schemas Zod + tipos), `backend` (API Fastify + Prisma), `frontend` (SPA Vue 3). Ver [`README.md`](./README.md) para setup local — este ficheiro foca-se em convenções e gotchas para trabalhar no código.
 
 ## Comandos
 
