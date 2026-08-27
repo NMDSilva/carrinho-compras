@@ -19,6 +19,8 @@ Monorepo (npm workspaces) para uma aplicação de comparação de preços de sup
 
 Se trabalhares em `backend` ou `frontend` isoladamente (sem passar por `npm run dev` na raiz), builda o `shared` primeiro (`npm run build -w shared`) — o seu `dist/` tem de existir.
 
+Corre `npm run db:generate` antes de testar/buildar o backend se ainda não o tiveres feito neste checkout — alguns módulos (ex: `auth.service.ts`) importam `@prisma/client` diretamente (não só via `shared/lib/prisma.ts`), e esse import falha em runtime sem o client gerado, mesmo com o Prisma mockado nos testes.
+
 ## Stack
 
 - **backend**: Fastify 5, Prisma 7 (`@prisma/adapter-pg`, Postgres), `fastify-type-provider-zod` (os schemas Zod do `shared` fazem a validação + geram o OpenAPI em `/docs`), autenticação JWT (`@fastify/jwt`).

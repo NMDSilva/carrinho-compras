@@ -1,9 +1,17 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { FastifyInstance } from 'fastify'
 import bcrypt from 'bcryptjs'
+import { Prisma } from '@prisma/client'
 import { buildApp } from '../../app'
 import { prismaMock } from '../../../tests/mocks/prisma'
 import { authHeader } from '../../../tests/helpers'
+
+// registerUser corre dentro de prisma.$transaction — fazemos o mock invocar o
+// callback com o próprio prismaMock, para que os mocks de user.count/create
+// dentro da transação funcionem como nos restantes testes.
+function mockTransaction() {
+  prismaMock.$transaction.mockImplementation((cb) => (cb as (tx: typeof prismaMock) => unknown)(prismaMock))
+}
 
 describe('auth routes', () => {
   let app: FastifyInstance
@@ -16,7 +24,8 @@ describe('auth routes', () => {
     await app.close()
   })
 
-  it('regista um novo utilizador', async () => {
+  it('regista o primeiro utilizador como ADMIN', async () => {
+    mockTransaction()
     prismaMock.user.findUnique.mockResolvedValueOnce(null)
     prismaMock.user.count.mockResolvedValueOnce(0)
     prismaMock.user.create.mockResolvedValueOnce({
@@ -37,6 +46,60 @@ describe('auth routes', () => {
 
     expect(res.statusCode).toBe(201)
     expect(res.json().user).toMatchObject({ email: 'ana@example.com', role: 'ADMIN' })
+  })
+
+  it('regista o segundo utilizador como USER', async () => {
+    mockTransaction()
+    prismaMock.user.findUnique.mockResolvedValueOnce(null)
+    prismaMock.user.count.mockResolvedValueOnce(1)
+    prismaMock.user.create.mockResolvedValueOnce({
+      id: 2,
+      name: 'Bruno',
+      email: 'bruno@example.com',
+      password: 'hashed',
+      role: 'USER',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as never)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: { name: 'Bruno', email: 'bruno@example.com', password: 'segredo123' },
+    })
+
+    expect(res.statusCode).toBe(201)
+    expect(res.json().user).toMatchObject({ email: 'bruno@example.com', role: 'USER' })
+  })
+
+  it('repete o registo depois de um conflito de escrita e sucede', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce(null)
+    const conflict = new Prisma.PrismaClientKnownRequestError('write conflict', {
+      code: 'P2034',
+      clientVersion: '7.8.0',
+    })
+    prismaMock.$transaction
+      .mockRejectedValueOnce(conflict)
+      .mockImplementationOnce((cb) => (cb as (tx: typeof prismaMock) => unknown)(prismaMock))
+    prismaMock.user.count.mockResolvedValueOnce(1)
+    prismaMock.user.create.mockResolvedValueOnce({
+      id: 2,
+      name: 'Bruno',
+      email: 'bruno@example.com',
+      password: 'hashed',
+      role: 'USER',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as never)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: { name: 'Bruno', email: 'bruno@example.com', password: 'segredo123' },
+    })
+
+    expect(res.statusCode).toBe(201)
+    expect(prismaMock.$transaction).toHaveBeenCalledTimes(2)
   })
 
   it('rejeita registo com email já existente', async () => {

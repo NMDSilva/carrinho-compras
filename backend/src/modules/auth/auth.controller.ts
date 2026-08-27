@@ -8,9 +8,7 @@ export async function register(request: FastifyRequest, reply: FastifyReply) {
   const { name, email, password } = registerSchema.parse(request.body)
   const existing = await authService.findUserByEmail(email)
   if (existing) return reply.status(409).send({ error: 'Email já registado' })
-  const count = await authService.countUsers()
-  const role = count === 0 ? 'ADMIN' : 'USER'
-  const user = await authService.createUser({ name, email, password, role })
+  const user = await authService.registerUser({ name, email, password })
   const token = request.server.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' })
   return reply.status(201).send({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } })
 }

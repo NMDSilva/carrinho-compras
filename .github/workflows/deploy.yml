@@ -25,6 +25,7 @@ jobs:
         run: |
           npm ci
           npm run build -w shared
+          npm run db:generate
 
       - name: Lint
         run: npm run lint
