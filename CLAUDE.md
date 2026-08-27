@@ -56,9 +56,10 @@ Corre `npm run db:generate` antes de testar/buildar o backend se ainda não o ti
 `backend/scripts/backup-db.sh` faz `pg_dump` diário e envia para um bucket GCS (`gs://$BACKUP_GCS_BUCKET/backups/`). É instalado como cron job (03:15) pelo próprio workflow de deploy, via `crontab`.
 
 **Setup manual necessário na VM (ainda não feito por CI):**
-1. Criar o bucket GCS e garantir que a conta usada na VM tem permissão de escrita (`roles/storage.objectCreator` ou superior).
-2. Adicionar `BACKUP_GCS_BUCKET=<nome-do-bucket>` ao secret `ENV_FILE` do GitHub (é escrito em `backend/.env` a cada deploy).
-3. Confirmar que a VM tem o `gcloud` CLI instalado e autenticado (`gcloud auth list`) — sem isto o cron falha silenciosamente (verificar `~/backup-db.log` na VM).
+1. Instalar o pacote `cron` na VM se não estiver presente (`sudo apt install -y cron` em Debian/Ubuntu) — sem isto o passo de agendamento no deploy.yml só avisa e não falha o deploy, mas o backup não fica agendado.
+2. Criar o bucket GCS e garantir que a conta usada na VM tem permissão de escrita (`roles/storage.objectCreator` ou superior).
+3. Adicionar `BACKUP_GCS_BUCKET=<nome-do-bucket>` ao secret `ENV_FILE` do GitHub (é escrito em `backend/.env` a cada deploy).
+4. Confirmar que a VM tem o `gcloud` CLI instalado e autenticado (`gcloud auth list`) — sem isto o cron falha silenciosamente (verificar `~/backup-db.log` na VM).
 
 Sem `BACKUP_GCS_BUCKET` definido, o script falha explicitamente (não faz backup silencioso a "lado nenhum").
 
