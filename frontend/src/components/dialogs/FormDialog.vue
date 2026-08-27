@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useId } from 'vue'
 import BaseDialog from './BaseDialog.vue'
+
+const formId = useId()
 
 withDefaults(defineProps<{
   modelValue: boolean
@@ -41,26 +44,30 @@ function submit() {
     :close-on-backdrop="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <!-- Conteúdo do formulário (slot) -->
-    <slot />
+    <!-- Formulário nativo: permite submeter com Enter. O botão de submit no
+         footer fica fora deste <form> (é um slot à parte no BaseDialog), por
+         isso associa-se via o atributo form= em vez de @click. -->
+    <form :id="formId" @submit.prevent="submit">
+      <slot />
 
-    <!-- Erro acima do footer, dentro do body -->
-    <div
-      v-if="error"
-      class="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700"
-    >
-      {{ error }}
-    </div>
+      <!-- Erro acima do footer, dentro do body -->
+      <div
+        v-if="error"
+        class="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700"
+      >
+        {{ error }}
+      </div>
+    </form>
 
     <template #footer>
       <button type="button" class="btn btn-secondary" :disabled="loading" @click="cancel">
         {{ cancelLabel }}
       </button>
       <button
-        type="button"
+        type="submit"
+        :form="formId"
         class="btn btn-primary"
         :disabled="loading"
-        @click="submit"
       >
         <svg
           v-if="loading"
