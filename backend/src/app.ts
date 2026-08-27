@@ -1,6 +1,7 @@
 import Fastify, { FastifyRequest, FastifyReply } from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
+import rateLimit from '@fastify/rate-limit'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
 import {
@@ -9,6 +10,7 @@ import {
   jsonSchemaTransform,
 } from 'fastify-type-provider-zod'
 import { ZodError } from 'zod'
+import { Prisma } from '@prisma/client'
 
 import authRoutes from './modules/auth/auth.routes'
 import usersRoutes from './modules/users/users.routes'
@@ -41,6 +43,9 @@ export async function buildApp() {
   await app.register(jwt, {
     secret: process.env.JWT_SECRET ?? 'dev-secret',
   })
+
+  // Sem limite global — só nas rotas que o configuram explicitamente (login/registo).
+  await app.register(rateLimit, { global: false })
 
   await app.register(swagger, {
     openapi: {
@@ -105,14 +110,17 @@ export async function buildApp() {
           })),
         })
       }
-      if (
-        error.message?.includes('Record to update not found') ||
-        error.message?.includes('Record to delete not found')
-      ) {
-        return reply.status(404).send({ error: 'Registo não encontrado' })
-      }
-      if (error.message?.includes('Unique constraint failed')) {
-        return reply.status(409).send({ error: 'Registo já existe' })
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        switch (error.code) {
+          case 'P2025':
+            return reply.status(404).send({ error: 'Registo não encontrado' })
+          case 'P2002':
+            return reply.status(409).send({ error: 'Registo já existe' })
+          case 'P2003':
+            return reply
+              .status(400)
+              .send({ error: 'Referência inválida — o registo relacionado não existe' })
+        }
       }
       if (error.statusCode) {
         return reply.status(error.statusCode).send({ error: error.message })

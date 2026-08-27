@@ -181,3 +181,32 @@ describe('auth routes', () => {
     expect(res.statusCode).toBe(401)
   })
 })
+
+describe('rate limiting em /api/auth', () => {
+  // App isolada — não pode partilhar estado de rate limit com o describe
+  // acima, ou os testes de login/registo lá de cima começariam a falhar.
+  let app: FastifyInstance
+
+  beforeAll(async () => {
+    app = await buildApp()
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  it('bloqueia ao fim de 5 tentativas de login por minuto', async () => {
+    prismaMock.user.findUnique.mockResolvedValue(null)
+
+    let last
+    for (let i = 0; i < 6; i++) {
+      last = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { email: 'ana@example.com', password: 'segredo123' },
+      })
+    }
+
+    expect(last!.statusCode).toBe(429)
+  })
+})

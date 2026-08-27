@@ -42,6 +42,7 @@ Corre `npm run db:generate` antes de testar/buildar o backend se ainda não o ti
 - **Módulo `compras`** não é uma entidade Prisma — é um endpoint de ingestão de faturas consumido por um workflow externo do n8n (`n8n.nmsilva.eu`), autenticado via `x-api-key` (`N8N_API_KEY`) em vez de JWT. Faz find-or-create de `User`/`Supermarket`/`Product` e escreve `PriceRecord`s. Se o email da fatura não corresponder a nenhum utilizador registado, os registos ficam a pertencer a um utilizador placeholder `sistema@carrinho-compras.local` (find-or-create em `compras.service.ts`), nunca a um id fixo assumido.
 - Os origins de CORS estão fixos no código em `app.ts` (não vêm de env var) — mudar domínios permitidos implica editar código.
 - **`/docs` (Swagger UI)** só fica registado fora de `NODE_ENV=production` — em produção devolve 404 de propósito (menos superfície de ataque). `/docs/json` (a spec OpenAPI crua) continua acessível em qualquer ambiente.
+- **Rate limiting**: `@fastify/rate-limit` está registado com `global: false` — só se aplica onde uma rota define `config: { rateLimit: {...} }`. `/api/auth/login` e `/api/auth/register` têm 5 pedidos/minuto por IP. Decisão deliberada: o registo continua a responder 409 "Email já registado" (permite enumeração de email), mitigado só pelo rate limit — não escondemos essa mensagem, porque a UX de dizer "já tens conta, inicia sessão" foi considerada mais valiosa que fechar esse vetor de baixa severidade numa app pessoal.
 
 ## Variáveis de ambiente (backend/.env)
 
