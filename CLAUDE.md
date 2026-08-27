@@ -60,9 +60,18 @@ Corre `npm run db:generate` antes de testar/buildar o backend se ainda não o ti
 **Setup manual necessário na VM (ainda não feito por CI):**
 1. Instalar o pacote `cron` na VM se não estiver presente (`sudo apt install -y cron` em Debian/Ubuntu) — sem isto o passo de agendamento no deploy.yml só avisa e não falha o deploy, mas o backup não fica agendado.
 
+## Staging
+
+Push para o branch `staging` dispara `.github/workflows/deploy-staging.yml` — mesmo gate (lint+test) e mesma VM da produção, mas isolado: pasta `~/carrinho-compras-staging`, processo pm2 `carrinho-compras-staging`, porta própria (definida no `.env` de staging). Reutiliza o **mesmo container Postgres** da produção (poupa recursos), mas numa base de dados à parte (`carrinho_compras_staging`, criada automaticamente pelo workflow se não existir) — nunca mexe nos dados de produção.
+
+**Setup manual necessário (ainda não feito por CI):**
+1. Criar o branch `staging` (`git checkout -b staging && git push -u origin staging`).
+2. Adicionar o secret `ENV_FILE_STAGING` no GitHub — mesmas variáveis que `ENV_FILE`, mas com `PORT` diferente (ex: `3001`) e `DATABASE_URL` a apontar para `carrinho_compras_staging` em vez de `carrinho_compras` (mesmo host/porta do Postgres, só muda o nome da BD).
+3. Para aceder à app de staging: por omissão só fica acessível na VM (`curl localhost:3001/api/health`) ou via túnel SSH (`ssh -L 3001:localhost:3001 <user>@<host>`) — não há vhost nginx automático. Se quiseres um URL público, cria um `server` block extra no nginx da VM a apontar para a porta de staging e para `~/carrinho-compras-staging/frontend/dist` (o `nginx.conf` no repo é só referência, não é aplicado automaticamente em nenhum dos dois ambientes).
+
 ## Convenções do repositório
 
-- Branches: `feature/<descrição>`.
+- Branches: `feature/<descrição>`. `staging` é um branch especial de longa duração — ver secção "Staging".
 - Mensagens de commit: estilo Conventional Commits, escritas em português.
 - Formatação: só Prettier (sem ponto-e-vírgula, aspas simples, indentação de 2 espaços) — ver `.prettierrc`.
 - O CI (`.github/workflows/deploy.yml`) builda e faz deploy para GCP em cada push para `main`, correndo primeiro `lint` e `test` como gate antes do build. Depois do `pm2 restart`, faz healthcheck a `/api/health` (10 tentativas, 3s) — se a app não responder, o job falha e mostra os últimos logs do `pm2` (não há rollback automático de código/migrations, só falha visível em vez de silenciosa).
