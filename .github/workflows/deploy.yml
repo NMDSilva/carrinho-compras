@@ -20,6 +20,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Instalar dependências e build do shared
         run: |
@@ -75,6 +77,25 @@ jobs:
             npx prisma migrate deploy
             pm2 restart carrinho-compras || pm2 start dist/server.js --name carrinho-compras --cwd ~/carrinho-compras/backend
             pm2 save
+
+            HEALTH_PORT=$(grep -m1 '^PORT=' .env | cut -d= -f2)
+            HEALTH_PORT=${HEALTH_PORT:-3000}
+            echo "A aguardar que a app fique saudável em :${HEALTH_PORT}..."
+            HEALTHY=false
+            for i in $(seq 1 10); do
+              if curl -sf "http://localhost:${HEALTH_PORT}/api/health" > /dev/null; then
+                echo "Healthcheck OK"
+                HEALTHY=true
+                break
+              fi
+              sleep 3
+            done
+            if [ "$HEALTHY" != true ]; then
+              echo "ERRO: healthcheck falhou depois de reiniciar — a app pode estar em baixo."
+              pm2 logs carrinho-compras --lines 50 --nostream || true
+              exit 1
+            fi
+
             chmod +x ~/carrinho-compras/backend/scripts/backup-db.sh
             if command -v crontab >/dev/null 2>&1; then
               CRON_LINE="15 3 * * * cd ~/carrinho-compras/backend && ./scripts/backup-db.sh >> ~/backup-db.log 2>&1"

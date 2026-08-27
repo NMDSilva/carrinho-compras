@@ -65,5 +65,5 @@ Corre `npm run db:generate` antes de testar/buildar o backend se ainda não o ti
 - Branches: `feature/<descrição>`.
 - Mensagens de commit: estilo Conventional Commits, escritas em português.
 - Formatação: só Prettier (sem ponto-e-vírgula, aspas simples, indentação de 2 espaços) — ver `.prettierrc`.
-- O CI (`.github/workflows/deploy.yml`) builda e faz deploy para GCP em cada push para `main`, correndo primeiro `lint` e `test` como gate antes do build.
+- O CI (`.github/workflows/deploy.yml`) builda e faz deploy para GCP em cada push para `main`, correndo primeiro `lint` e `test` como gate antes do build. Depois do `pm2 restart`, faz healthcheck a `/api/health` (10 tentativas, 3s) — se a app não responder, o job falha e mostra os últimos logs do `pm2` (não há rollback automático de código/migrations, só falha visível em vez de silenciosa).
 - Toda a documentação, especificações, comentários no código e mensagens de commit devem ser escritos em **português de Portugal (pt-PT)**.
