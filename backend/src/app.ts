@@ -19,7 +19,11 @@ import pricesRoutes from './modules/prices/prices.routes'
 
 export async function buildApp() {
   const app = Fastify({
-    logger: process.env.NODE_ENV === 'development',
+    // Sem log em testes (ruído); nível mais verboso em dev, mais contido em produção.
+    logger:
+      process.env.NODE_ENV === 'test'
+        ? false
+        : { level: process.env.NODE_ENV === 'production' ? 'info' : 'debug' },
   })
 
   app.setValidatorCompiler(validatorCompiler)
@@ -85,14 +89,10 @@ export async function buildApp() {
   app.setErrorHandler(
     (
       error: Error & { statusCode?: number },
-      _request: FastifyRequest,
+      request: FastifyRequest,
       reply: FastifyReply
     ) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error(
-          `[${new Date().toISOString()}] ${error.name}: ${error.message}`
-        )
-      }
+      request.log.error({ err: error }, `${error.name}: ${error.message}`)
       if (error instanceof ZodError) {
         return reply.status(400).send({
           error: 'Dados inválidos',
