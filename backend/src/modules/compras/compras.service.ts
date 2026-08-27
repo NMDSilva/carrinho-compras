@@ -43,53 +43,58 @@ export async function registarCompra(body: ComprasRequest) {
 
   const userId = user ? user.id : (await getOrCreateSystemUser()).id
 
-  let supermarket = await prisma.supermarket.findFirst({
-    where: { name: { equals: body.local, mode: 'insensitive' } },
-  })
-  if (!supermarket) {
-    supermarket = await prisma.supermarket.create({
-      data: { name: body.local, createdById: userId },
+  // Uma fatura pode ter vários produtos — se um falhar a meio (ex: produto
+  // duplicado, FK inválida), a transação garante que não ficam preços
+  // registados sem os produtos correspondentes nem vice-versa.
+  return prisma.$transaction(async (tx) => {
+    let supermarket = await tx.supermarket.findFirst({
+      where: { name: { equals: body.local, mode: 'insensitive' } },
     })
-  }
-
-  let productsCreated = 0
-  let pricesCreated = 0
-  const records = []
-
-  for (const item of body.produtos) {
-    let product = await prisma.product.findFirst({
-      where: { name: { equals: item.produto, mode: 'insensitive' } },
-    })
-    if (!product) {
-      product = await prisma.product.create({
-        data: { name: item.produto, unit: 'un', createdById: userId },
+    if (!supermarket) {
+      supermarket = await tx.supermarket.create({
+        data: { name: body.local, createdById: userId },
       })
-      productsCreated++
     }
 
-    const priceRecord = await prisma.priceRecord.create({
-      data: {
-        productId: product.id,
-        supermarketId: supermarket.id,
-        price: item.valor,
-        quantity: 1,
-        notes: `Registado através da importação da fatura ${body.fatura}`,
-        date,
-        createdById: userId,
-      },
-    })
-    pricesCreated++
-    records.push({
-      product: product.name,
-      price: item.valor,
-      priceRecordId: priceRecord.id,
-    })
-  }
+    let productsCreated = 0
+    let pricesCreated = 0
+    const records = []
 
-  return {
-    supermarketId: supermarket.id,
-    productsCreated,
-    pricesCreated,
-    records,
-  }
+    for (const item of body.produtos) {
+      let product = await tx.product.findFirst({
+        where: { name: { equals: item.produto, mode: 'insensitive' } },
+      })
+      if (!product) {
+        product = await tx.product.create({
+          data: { name: item.produto, unit: 'un', createdById: userId },
+        })
+        productsCreated++
+      }
+
+      const priceRecord = await tx.priceRecord.create({
+        data: {
+          productId: product.id,
+          supermarketId: supermarket.id,
+          price: item.valor,
+          quantity: 1,
+          notes: `Registado através da importação da fatura ${body.fatura}`,
+          date,
+          createdById: userId,
+        },
+      })
+      pricesCreated++
+      records.push({
+        product: product.name,
+        price: item.valor,
+        priceRecordId: priceRecord.id,
+      })
+    }
+
+    return {
+      supermarketId: supermarket.id,
+      productsCreated,
+      pricesCreated,
+      records,
+    }
+  })
 }

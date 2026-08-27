@@ -4,6 +4,13 @@ import { Prisma } from '@prisma/client'
 import { buildApp } from '../../app'
 import { prismaMock } from '../../../tests/mocks/prisma'
 
+// O processamento da fatura corre dentro de prisma.$transaction — o mock
+// invoca o callback com o próprio prismaMock, para os mocks por-model
+// (supermarket/product/priceRecord) funcionarem como esperado.
+function mockTransaction() {
+  prismaMock.$transaction.mockImplementation((cb) => (cb as (tx: typeof prismaMock) => unknown)(prismaMock))
+}
+
 describe('compras routes (N8N)', () => {
   let app: FastifyInstance
 
@@ -31,6 +38,7 @@ describe('compras routes (N8N)', () => {
   })
 
   it('regista compra com api key válida', async () => {
+    mockTransaction()
     prismaMock.user.findFirst.mockResolvedValueOnce({ id: 1 } as never)
     prismaMock.supermarket.findFirst.mockResolvedValueOnce({ id: 1, name: 'Continente' } as never)
     prismaMock.product.findFirst.mockResolvedValueOnce(null)
@@ -49,6 +57,7 @@ describe('compras routes (N8N)', () => {
   })
 
   it('usa o utilizador Sistema quando o email da fatura é desconhecido', async () => {
+    mockTransaction()
     prismaMock.user.findFirst.mockResolvedValueOnce(null)
     prismaMock.user.findUnique.mockResolvedValueOnce(null)
     prismaMock.user.create.mockResolvedValueOnce({ id: 99, email: 'sistema@carrinho-compras.local' } as never)
@@ -71,6 +80,7 @@ describe('compras routes (N8N)', () => {
   })
 
   it('reutiliza o utilizador Sistema já existente em vez de recriar', async () => {
+    mockTransaction()
     prismaMock.user.findFirst.mockResolvedValueOnce(null)
     prismaMock.user.findUnique.mockResolvedValueOnce({ id: 99, email: 'sistema@carrinho-compras.local' } as never)
     prismaMock.supermarket.findFirst.mockResolvedValueOnce({ id: 1, name: 'Continente' } as never)
@@ -90,6 +100,7 @@ describe('compras routes (N8N)', () => {
   })
 
   it('recupera de uma criação concorrente do utilizador Sistema', async () => {
+    mockTransaction()
     prismaMock.user.findFirst.mockResolvedValueOnce(null)
     prismaMock.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({
       id: 99,
@@ -114,5 +125,35 @@ describe('compras routes (N8N)', () => {
     })
 
     expect(res.statusCode).toBe(201)
+  })
+
+  it('propaga o erro (sem responder 201) se um produto a meio da fatura falhar', async () => {
+    mockTransaction()
+    prismaMock.user.findFirst.mockResolvedValueOnce({ id: 1 } as never)
+    prismaMock.supermarket.findFirst.mockResolvedValueOnce({ id: 1, name: 'Continente' } as never)
+    prismaMock.product.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+    prismaMock.product.create
+      .mockResolvedValueOnce({ id: 1, name: 'Leite' } as never)
+      .mockResolvedValueOnce({ id: 2, name: 'Pão' } as never)
+    prismaMock.priceRecord.create
+      .mockResolvedValueOnce({ id: 1 } as never)
+      .mockRejectedValueOnce(new Error('falha a meio da fatura'))
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/compras',
+      headers: { 'x-api-key': 'test-api-key' },
+      payload: {
+        ...payload,
+        produtos: [
+          { produto: 'Leite', valor: 1.5 },
+          { produto: 'Pão', valor: 2 },
+        ],
+      },
+    })
+
+    expect(res.statusCode).toBe(500)
   })
 })
