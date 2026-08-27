@@ -9,19 +9,19 @@ const priceInclude = {
   updatedBy: userSelect,
 }
 
-export function listPrices(filters: { productId?: string; supermarketId?: string; limit?: string; offset?: string }) {
-  const { productId, supermarketId, limit = '20', offset = '0' } = filters
+export function listPrices(filters: { productId?: number; supermarketId?: number; limit: number; offset: number }) {
+  const { productId, supermarketId, limit, offset } = filters
   const where = {
-    ...(productId ? { productId: Number(productId) } : {}),
-    ...(supermarketId ? { supermarketId: Number(supermarketId) } : {}),
+    ...(productId ? { productId } : {}),
+    ...(supermarketId ? { supermarketId } : {}),
   }
   return Promise.all([
     prisma.priceRecord.findMany({
       where,
       include: priceInclude,
       orderBy: { date: 'desc' },
-      take: Number(limit),
-      skip: Number(offset),
+      take: limit,
+      skip: offset,
     }),
     prisma.priceRecord.count({ where }),
   ])

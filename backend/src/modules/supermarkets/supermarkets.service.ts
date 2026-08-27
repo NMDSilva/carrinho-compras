@@ -6,6 +6,7 @@ export function listSupermarkets() {
   return prisma.supermarket.findMany({
     include: { _count: { select: { prices: true } }, createdBy: userSelect, updatedBy: userSelect },
     orderBy: { name: 'asc' },
+    take: 500, // sem paginação na UI — só um limite de segurança
   })
 }
 

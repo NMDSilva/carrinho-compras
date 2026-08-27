@@ -17,6 +17,7 @@ export function listProducts(filters: { search?: string; category?: string }) {
       updatedBy: userSelect,
     },
     orderBy: { name: 'asc' },
+    take: 500, // sem paginação na UI — só um limite de segurança
   })
 }
 

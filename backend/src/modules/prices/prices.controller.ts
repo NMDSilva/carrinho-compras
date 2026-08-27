@@ -5,7 +5,7 @@ import { priceRecordSchema } from './prices.schema'
 import * as pricesService from './prices.service'
 
 export async function getPrices(
-  request: FastifyRequest<{ Querystring: { productId?: string; supermarketId?: string; limit?: string; offset?: string } }>,
+  request: FastifyRequest<{ Querystring: { productId?: number; supermarketId?: number; limit: number; offset: number } }>,
   reply: FastifyReply
 ) {
   const [prices, total] = await pricesService.listPrices(request.query)

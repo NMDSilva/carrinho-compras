@@ -27,10 +27,10 @@ export const priceIdParamSchema = z.object({ id: z.string() })
 export const productIdParamSchema = z.object({ productId: z.string() })
 
 export const priceListQuerySchema = z.object({
-  productId: z.string().optional(),
-  supermarketId: z.string().optional(),
-  limit: z.string().optional(),
-  offset: z.string().optional(),
+  productId: z.coerce.number().int().positive().optional(),
+  supermarketId: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
 })
 
 export const priceHistoryQuerySchema = z.object({ supermarketIds: z.string().optional() })
