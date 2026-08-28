@@ -40,6 +40,10 @@ model ProductVariant {
   productId   Int
   brand       String?
   packageSize Float?
+  // Quantidade de embalagens no pack (ex: "3X210G" → packageSize=210,
+  // packCount=3). Null = pack simples (o mesmo que packCount=1, mas fica
+  // ausente por omissão para não obrigar a preencher em produtos sem multipack).
+  packCount   Int?
   unit        String
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -50,7 +54,7 @@ model ProductVariant {
   createdBy   User?         @relation("VariantCreatedBy", fields: [createdById], references: [id])
   updatedBy   User?         @relation("VariantUpdatedBy", fields: [updatedById], references: [id])
 
-  @@unique([productId, brand, packageSize, unit])
+  @@unique([productId, brand, packageSize, unit, packCount])
   @@index([productId])
 }
 

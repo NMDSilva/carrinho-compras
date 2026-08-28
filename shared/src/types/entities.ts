@@ -35,12 +35,15 @@ export interface Product {
 }
 
 /** Variante de um Product genérico: marca + tamanho de embalagem + unidade
- * (ex: brand="Sidul", packageSize=1, unit="kg" → "Sidul 1Kg"). */
+ * (ex: brand="Sidul", packageSize=1, unit="kg" → "Sidul 1Kg"). packCount
+ * distingue um multipack de um pack simples do mesmo tamanho/marca
+ * (ex: "3X210G" → packageSize=210, packCount=3 → "3×210g"). */
 export interface ProductVariant {
   id: number
   productId: number
   brand: string | null
   packageSize: number | null
+  packCount: number | null
   unit: string
   createdAt: string
   updatedAt: string

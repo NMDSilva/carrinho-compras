@@ -44,7 +44,7 @@ Entidades Prisma (`backend/prisma/schema.prisma`):
 
 - **`User`** — `id, email (único), password (hash bcrypt), name, role`. Dono de registos criados/atualizados (`createdBy`/`updatedBy` em Product, ProductVariant, Supermarket, PriceRecord).
 - **`Product`** (produto genérico) — `id, name, category?, needsReview`. Ex: "Açúcar branco". `needsReview` marca produtos criados automaticamente pela ingestão de faturas (n8n) que ainda não foram curados manualmente — ver secção 6.
-- **`ProductVariant`** (marca + tamanho de embalagem + unidade de um Product) — `id, productId, brand?, packageSize?, unit`. Ex: `brand="Sidul", packageSize=1, unit="kg"` → "Sidul 1Kg". Único por `(productId, brand, packageSize, unit)`.
+- **`ProductVariant`** (marca + tamanho de embalagem + unidade de um Product) — `id, productId, brand?, packageSize?, packCount?, unit`. Ex: `brand="Sidul", packageSize=1, unit="kg"` → "Sidul 1Kg". `packCount` distingue um multipack de um pack simples do mesmo tamanho/marca — ex: "3X210G" → `packageSize=210, packCount=3` → "3×210g", separado de um "210g" simples (`packCount=null`). Único por `(productId, brand, packageSize, unit, packCount)`.
 - **`Supermarket`** — `id, name (único), location?`.
 - **`PriceRecord`** — `id, variantId, supermarketId, price, quantity, date, notes?`. Ligado a `ProductVariant` (que por sua vez liga a `Product`) e a `Supermarket`, ambos com `onDelete: Cascade` — eliminar um produto elimina em cascata as suas variantes e os preços associados; eliminar uma variante elimina só os seus preços. Índices em `variantId`, `supermarketId`, `date`.
 

@@ -63,10 +63,14 @@ export const productsApi = {
 export const variantsApi = {
   getByProduct: (productId: number) => api<ProductVariant[]>(`/products/${productId}/variants`),
   getById: (id: number) => api<ProductVariant>(`/variants/${id}`),
-  create: (productId: number, data: { brand?: string | null; packageSize?: number | null; unit: string }) =>
-    api<ProductVariant>(`/products/${productId}/variants`, { method: 'POST', body: data }),
-  update: (id: number, data: Partial<{ brand: string | null; packageSize: number | null; unit: string }>) =>
-    api<ProductVariant>(`/variants/${id}`, { method: 'PUT', body: data }),
+  create: (
+    productId: number,
+    data: { brand?: string | null; packageSize?: number | null; packCount?: number | null; unit: string }
+  ) => api<ProductVariant>(`/products/${productId}/variants`, { method: 'POST', body: data }),
+  update: (
+    id: number,
+    data: Partial<{ brand: string | null; packageSize: number | null; packCount: number | null; unit: string }>
+  ) => api<ProductVariant>(`/variants/${id}`, { method: 'PUT', body: data }),
   delete: (id: number) => api(`/variants/${id}`, { method: 'DELETE' }),
   reassign: (id: number, productId: number) =>
     api<ProductVariant>(`/variants/${id}/reassign`, { method: 'PATCH', body: { productId } }),

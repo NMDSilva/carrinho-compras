@@ -46,7 +46,7 @@ const UNITS = ['un', 'kg', 'g', 'L', 'ml', 'cx', 'pac', 'dz']
 const showVariantModal = ref(false)
 const editingVariant = ref<ProductVariant | null>(null)
 const variantProductId = ref<number | null>(null)
-const variantForm = ref({ brand: '', packageSize: '', unit: 'un' })
+const variantForm = ref({ brand: '', packageSize: '', packCount: '', unit: 'un' })
 const {
   loading: savingVariant,
   error: variantFormError,
@@ -174,7 +174,7 @@ async function confirmDelete() {
 function openCreateVariant(productId: number) {
   editingVariant.value = null
   variantProductId.value = productId
-  variantForm.value = { brand: '', packageSize: '', unit: 'un' }
+  variantForm.value = { brand: '', packageSize: '', packCount: '', unit: 'un' }
   variantFormError.value = ''
   showVariantModal.value = true
 }
@@ -185,6 +185,7 @@ function openEditVariant(productId: number, variant: ProductVariant) {
   variantForm.value = {
     brand: variant.brand ?? '',
     packageSize: variant.packageSize != null ? String(variant.packageSize) : '',
+    packCount: variant.packCount != null ? String(variant.packCount) : '',
     unit: variant.unit,
   }
   variantFormError.value = ''
@@ -202,6 +203,7 @@ async function saveVariant() {
       packageSize: variantForm.value.packageSize
         ? Number(variantForm.value.packageSize)
         : null,
+      packCount: variantForm.value.packCount ? Number(variantForm.value.packCount) : null,
       unit: variantForm.value.unit,
     }
     if (editingVariant.value) {
@@ -472,7 +474,11 @@ async function confirmReassign() {
                         {{ variant.brand ?? '—' }}
                       </td>
                       <td class="px-4 py-2 text-gray-500">
-                        {{ variant.packageSize ?? '—' }}
+                        <span v-if="variant.packageSize == null">—</span>
+                        <span v-else-if="variant.packCount"
+                          >{{ variant.packCount }} × {{ variant.packageSize }}</span
+                        >
+                        <span v-else>{{ variant.packageSize }}</span>
                       </td>
                       <td class="px-4 py-2">
                         <span class="badge-blue">{{ variant.unit }}</span>
@@ -575,7 +581,18 @@ async function confirmReassign() {
             placeholder="ex: Sidul"
           />
         </div>
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="label">Embalagens</label>
+            <input
+              v-model="variantForm.packCount"
+              type="number"
+              step="1"
+              min="1"
+              class="input"
+              placeholder="ex: 3"
+            />
+          </div>
           <div>
             <label class="label">Tamanho</label>
             <input

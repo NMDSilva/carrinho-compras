@@ -19,12 +19,14 @@ const variantsOfSelected = computed(
 function formatVariant(variant: {
   brand: string | null
   packageSize: number | null
+  packCount: number | null
   unit: string
 }) {
   const size = variant.packageSize
     ? `${variant.packageSize}${variant.unit}`
     : variant.unit
-  return variant.brand ? `${variant.brand} ${size}` : `Genérico ${size}`
+  const label = variant.packCount ? `${variant.packCount}×${size}` : size
+  return variant.brand ? `${variant.brand} ${label}` : `Genérico ${label}`
 }
 
 const compareResult = ref<CompareResult | null>(null)
