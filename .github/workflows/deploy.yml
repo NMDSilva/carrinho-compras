@@ -80,7 +80,15 @@ jobs:
             NODE_OPTIONS="--max-old-space-size=512" npm ci --omit=dev --no-audit
             npx prisma generate
             npx prisma migrate deploy
-            pm2 restart carrinho-compras || pm2 start dist/server.js --name carrinho-compras --cwd ~/carrinho-compras/backend
+            # "pm2 restart <nome>" e o fallback "pm2 start" podiam ambos falhar
+            # quando o estado do pm2 fica inconsistente (dump.pm2 desatualizado
+            # a apontar para um id que já não existe, mas com outro processo
+            # pm2-managed a correr o mesmo script sob id/nome diferente —
+            # "Process 0 not found" seguido de "Script already launched").
+            # Esta VM só corre esta app (staging tem processo pm2 próprio,
+            # ainda por criar), por isso é seguro limpar tudo e arrancar de novo.
+            pm2 delete all 2>/dev/null || true
+            pm2 start dist/server.js --name carrinho-compras --cwd ~/carrinho-compras/backend
             pm2 save
 
             HEALTH_PORT=$(grep -m1 '^PORT=' .env | cut -d= -f2)
