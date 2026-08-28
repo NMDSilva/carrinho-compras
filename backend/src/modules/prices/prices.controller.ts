@@ -5,7 +5,9 @@ import { priceRecordSchema } from './prices.schema'
 import * as pricesService from './prices.service'
 
 export async function getPrices(
-  request: FastifyRequest<{ Querystring: { productId?: number; supermarketId?: number; limit: number; offset: number } }>,
+  request: FastifyRequest<{
+    Querystring: { variantId?: number; productId?: number; supermarketId?: number; limit: number; offset: number }
+  }>,
   reply: FastifyReply
 ) {
   const [prices, total] = await pricesService.listPrices(request.query)
@@ -52,6 +54,8 @@ export async function deletePrice(request: FastifyRequest<{ Params: { id: string
   return reply.status(204).send()
 }
 
+// Melhor preço de um produto genérico por supermercado, através de todas as
+// suas variantes/marcas — ordenado do mais barato para o mais caro.
 export async function compareProductPrices(request: FastifyRequest<{ Params: { productId: string } }>, reply: FastifyReply) {
   const productId = Number(request.params.productId)
   const product = await pricesService.findProductById(productId)
@@ -59,29 +63,35 @@ export async function compareProductPrices(request: FastifyRequest<{ Params: { p
 
   const allPrices = await pricesService.listProductPrices(productId)
 
-  const bySuper = new Map<number, (typeof allPrices)[0]>()
+  // Mais recente por par (supermercado, variante) — listProductPrices já vem
+  // ordenado por data desc, por isso a primeira ocorrência de cada par é a
+  // mais recente. Mantém marcas diferentes no mesmo supermercado visíveis.
+  const byPair = new Map<string, (typeof allPrices)[0]>()
   for (const p of allPrices) {
-    if (!bySuper.has(p.supermarketId)) bySuper.set(p.supermarketId, p)
+    const key = `${p.supermarketId}-${p.variantId}`
+    if (!byPair.has(key)) byPair.set(key, p)
   }
 
-  return reply.send({ product, prices: Array.from(bySuper.values()).sort((a, b) => a.price - b.price) })
+  return reply.send({ product, prices: Array.from(byPair.values()).sort((a, b) => a.price - b.price) })
 }
 
+// Histórico de preços de UMA variante — misturar marcas diferentes na mesma
+// série temporal seria enganador.
 export async function getPriceHistory(
-  request: FastifyRequest<{ Params: { productId: string }; Querystring: { supermarketIds?: string } }>,
+  request: FastifyRequest<{ Params: { variantId: string }; Querystring: { supermarketIds?: string } }>,
   reply: FastifyReply
 ) {
-  const productId = Number(request.params.productId)
+  const variantId = Number(request.params.variantId)
   const { supermarketIds } = request.query
 
   const supermarketFilter = supermarketIds
     ? supermarketIds.split(',').map(Number).filter((n) => !isNaN(n))
     : undefined
 
-  const product = await pricesService.findProductById(productId)
-  if (!product) return reply.status(404).send({ error: 'Produto não encontrado' })
+  const variant = await pricesService.findVariantById(variantId)
+  if (!variant) return reply.status(404).send({ error: 'Variante não encontrada' })
 
-  const history = await pricesService.listPriceHistory(productId, supermarketFilter)
+  const history = await pricesService.listPriceHistory(variantId, supermarketFilter)
 
   const grouped: Record<string, { supermarket: { id: number; name: string }; records: { date: string; price: number }[] }> = {}
   for (const record of history) {
@@ -90,7 +100,7 @@ export async function getPriceHistory(
     grouped[key].records.push({ date: record.date.toISOString(), price: record.price })
   }
 
-  return reply.send({ product, history: Object.values(grouped) })
+  return reply.send({ variant, history: Object.values(grouped) })
 }
 
 export async function getDashboardStats(_request: FastifyRequest, reply: FastifyReply) {

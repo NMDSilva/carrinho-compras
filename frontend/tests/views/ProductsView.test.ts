@@ -22,11 +22,11 @@ vi.mock('@/api', () => ({
 const product = {
   id: 1,
   name: 'Leite meio gordo',
-  brand: 'Mimosa',
-  unit: 'L',
   category: 'Laticínios',
+  needsReview: false,
   createdAt: '',
   updatedAt: '',
+  variants: [],
 }
 
 async function setupRouter(path: string) {
@@ -72,8 +72,10 @@ describe('ProductsView', () => {
 
     await wrapper.find('button.btn-danger').trigger('click')
     await wrapper.vm.$nextTick()
-    const buttons = wrapper.findAll('button')
-    await buttons[buttons.length - 1].trigger('click')
+    // índice 0 = eliminar da linha, índice 1 = confirmar no dialog de produto
+    // (índice 2 seria o dialog de eliminar variante, mais abaixo na página)
+    const dangerButtons = wrapper.findAll('button.btn-danger')
+    await dangerButtons[1].trigger('click')
     await new Promise((r) => setTimeout(r, 0))
     await wrapper.vm.$nextTick()
 
@@ -89,7 +91,7 @@ describe('ProductsView', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.text()).toContain('Editar Produto')
-    expect((wrapper.find('input[placeholder="ex: Leite Meio-Gordo"]').element as HTMLInputElement).value).toBe(
+    expect((wrapper.find('input[placeholder="ex: Açúcar branco"]').element as HTMLInputElement).value).toBe(
       'Leite meio gordo'
     )
   })

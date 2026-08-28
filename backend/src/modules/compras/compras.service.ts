@@ -61,19 +61,42 @@ export async function registarCompra(body: ComprasRequest) {
     const records = []
 
     for (const item of body.produtos) {
+      // Find-or-create por texto exato (case-insensitive) do nome — se o
+      // mesmo texto de fatura já apareceu antes, reutiliza o mesmo produto
+      // placeholder e continua a acumular histórico de preço nele, mesmo
+      // antes de qualquer revisão manual.
       let product = await tx.product.findFirst({
         where: { name: { equals: item.produto, mode: 'insensitive' } },
+        include: { variants: true },
       })
-      if (!product) {
+
+      let variant: { id: number }
+
+      if (product && product.variants.length === 1) {
+        // Placeholder já existente (ou produto manual com exatamente 1
+        // variante) — reutiliza sem ambiguidade.
+        variant = product.variants[0]
+      } else {
+        // Não encontrado, ou encontrado mas já curado manualmente com 0 ou
+        // 2+ variantes (sem variante inequívoca para atribuir o preço) —
+        // nunca tenta adivinhar, cria sempre um novo produto placeholder.
         product = await tx.product.create({
-          data: { name: item.produto, unit: 'un', createdById: userId },
+          data: {
+            name: item.produto,
+            needsReview: true,
+            createdById: userId,
+            variants: { create: { unit: 'un', createdById: userId } },
+          },
+          include: { variants: true },
         })
+        variant = product.variants[0]
         productsCreated++
       }
 
       const priceRecord = await tx.priceRecord.create({
         data: {
           productId: product.id,
+          variantId: variant.id,
           supermarketId: supermarket.id,
           price: item.valor,
           quantity: 1,

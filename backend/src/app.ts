@@ -16,6 +16,7 @@ import authRoutes from './modules/auth/auth.routes'
 import usersRoutes from './modules/users/users.routes'
 import comprasRoutes from './modules/compras/compras.routes'
 import productsRoutes from './modules/products/products.routes'
+import variantsRoutes from './modules/products/variants.routes'
 import supermarketsRoutes from './modules/supermarkets/supermarkets.routes'
 import pricesRoutes from './modules/prices/prices.routes'
 
@@ -138,6 +139,7 @@ export async function buildApp() {
   await app.register(usersRoutes, { prefix: '/api/admin' })
   await app.register(comprasRoutes, { prefix: '/api/compras' })
   await app.register(productsRoutes, { prefix: '/api/products' })
+  await app.register(variantsRoutes, { prefix: '/api/variants' })
   await app.register(supermarketsRoutes, { prefix: '/api/supermarkets' })
   await app.register(pricesRoutes, { prefix: '/api/prices' })
 

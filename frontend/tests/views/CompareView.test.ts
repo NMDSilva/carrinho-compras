@@ -14,7 +14,8 @@ vi.mock('@/api', () => ({
   pricesApi: { compare: compareMock, history: historyMock },
 }))
 
-const product = { id: 1, name: 'Leite', brand: null, unit: 'L' }
+const variant = { id: 10, productId: 1, brand: null, packageSize: null, unit: 'L' }
+const product = { id: 1, name: 'Leite', variants: [variant] }
 
 async function flush() {
   await new Promise((r) => setTimeout(r, 0))
@@ -48,6 +49,12 @@ describe('CompareView', () => {
     await flush()
 
     await wrapper.find('select').setValue('1')
+    await flush()
+    await wrapper.vm.$nextTick()
+
+    // segundo select só aparece depois de escolher o produto — é a variante,
+    // necessária para carregar o histórico
+    await wrapper.findAll('select')[1].setValue('10')
     await flush()
     await wrapper.vm.$nextTick()
 

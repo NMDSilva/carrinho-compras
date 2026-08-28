@@ -6,7 +6,7 @@ export type { PriceRecordInput } from '@carrinho/shared'
 
 // Plumbing HTTP específico do backend (validação de rotas / OpenAPI)
 export const priceCreateBodySchema = z.object({
-  productId: z.number().int().positive(),
+  variantId: z.number().int().positive(),
   supermarketId: z.number().int().positive(),
   price: z.number().positive(),
   quantity: z.number().positive().default(1),
@@ -15,7 +15,7 @@ export const priceCreateBodySchema = z.object({
 })
 
 export const priceUpdateBodySchema = z.object({
-  productId: z.number().int().positive().optional(),
+  variantId: z.number().int().positive().optional(),
   supermarketId: z.number().int().positive().optional(),
   price: z.number().positive().optional(),
   quantity: z.number().positive().optional(),
@@ -25,9 +25,11 @@ export const priceUpdateBodySchema = z.object({
 
 export const priceIdParamSchema = z.object({ id: z.string() })
 export const productIdParamSchema = z.object({ productId: z.string() })
+export const variantIdParamSchema = z.object({ variantId: z.string() })
 
 export const priceListQuerySchema = z.object({
   productId: z.coerce.number().int().positive().optional(),
+  variantId: z.coerce.number().int().positive().optional(),
   supermarketId: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(100).default(20),
   offset: z.coerce.number().int().min(0).default(0),

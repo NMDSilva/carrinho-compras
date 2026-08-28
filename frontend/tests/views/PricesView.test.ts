@@ -23,13 +23,13 @@ vi.mock('@/api', () => ({
 
 const price = {
   id: 1,
-  productId: 1,
+  variantId: 1,
   supermarketId: 1,
   price: 1.5,
   quantity: 1,
   date: '2026-01-01T00:00:00.000Z',
   notes: null,
-  product: { id: 1, name: 'Leite' },
+  variant: { id: 1, productId: 1, brand: null, packageSize: null, unit: 'L', product: { id: 1, name: 'Leite' } },
   supermarket: { id: 1, name: 'Continente' },
 }
 

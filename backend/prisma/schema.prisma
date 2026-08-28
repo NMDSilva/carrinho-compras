@@ -7,20 +7,51 @@ datasource db {
 }
 
 model Product {
-  id          Int           @id @default(autoincrement())
+  id          Int              @id @default(autoincrement())
   name        String
+  // brand/unit: legado, substituído por ProductVariant (ver abaixo). Deixaram
+  // de ser obrigatórios — o backend já não os escreve em produtos novos,
+  // ficam só para não perder os valores já existentes até à migration de
+  // limpeza (Fase 3).
   brand       String?
-  unit        String
+  unit        String?
   category    String?
+  needsReview Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  createdById Int?
+  updatedById Int?
+  prices      PriceRecord[]
+  variants    ProductVariant[]
+  createdBy   User?            @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?            @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+
+  @@unique([name, brand, unit])
+  @@index([needsReview])
+  @@index([category])
+}
+
+// Variante de um Product genérico (marca + tamanho de embalagem + unidade,
+// ex: "Sidul" + 1 + "kg" = "Sidul 1Kg"). Introduzida a par de Product.brand/unit,
+// que ficam temporariamente coexistentes até à migration de limpeza (depois de
+// o backend passar a escrever exclusivamente nesta tabela) — ver docs/ESQUEMA.md.
+model ProductVariant {
+  id          Int           @id @default(autoincrement())
+  productId   Int
+  brand       String?
+  packageSize Float?
+  unit        String
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   createdById Int?
   updatedById Int?
+  product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   prices      PriceRecord[]
-  createdBy   User?         @relation("ProductCreatedBy", fields: [createdById], references: [id])
-  updatedBy   User?         @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+  createdBy   User?         @relation("VariantCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?         @relation("VariantUpdatedBy", fields: [updatedById], references: [id])
 
-  @@unique([name, brand, unit])
+  @@unique([productId, brand, packageSize, unit])
+  @@index([productId])
 }
 
 model Supermarket {
@@ -37,38 +68,52 @@ model Supermarket {
 }
 
 model User {
-  id                  Int           @id @default(autoincrement())
-  email               String        @unique
+  id                  Int              @id @default(autoincrement())
+  email               String           @unique
   password            String
   name                String
-  role                String        @default("USER")
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  createdProducts     Product[]     @relation("ProductCreatedBy")
-  updatedProducts     Product[]     @relation("ProductUpdatedBy")
-  createdSupermarkets Supermarket[] @relation("SupermarketCreatedBy")
-  updatedSupermarkets Supermarket[] @relation("SupermarketUpdatedBy")
-  createdPrices       PriceRecord[] @relation("PriceCreatedBy")
-  updatedPrices       PriceRecord[] @relation("PriceUpdatedBy")
+  role                String           @default("USER")
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  createdProducts     Product[]        @relation("ProductCreatedBy")
+  updatedProducts     Product[]        @relation("ProductUpdatedBy")
+  createdVariants     ProductVariant[] @relation("VariantCreatedBy")
+  updatedVariants     ProductVariant[] @relation("VariantUpdatedBy")
+  createdSupermarkets Supermarket[]    @relation("SupermarketCreatedBy")
+  updatedSupermarkets Supermarket[]    @relation("SupermarketUpdatedBy")
+  createdPrices       PriceRecord[]    @relation("PriceCreatedBy")
+  updatedPrices       PriceRecord[]    @relation("PriceUpdatedBy")
 }
 
 model PriceRecord {
-  id            Int         @id @default(autoincrement())
-  productId     Int
+  id            Int            @id @default(autoincrement())
+  // Legado — substituído por variantId (ver ProductVariant acima). Populado
+  // por backfill nos registos existentes e continua a ser escrito pela
+  // ingestão de faturas (que já conhece o Product diretamente), mas deixou de
+  // ser obrigatório: o resto do backend passou a escrever/ler só variantId.
+  // Removido de vez na migration de limpeza (Fase 3). onDelete: SetNull (não
+  // Cascade) de propósito — a variante é que é a dona real do registo agora;
+  // apagar o Product antigo de uma variante já reatribuída não pode destruir
+  // preços que continuam válidos sob o novo produto (bug detetado em teste
+  // manual: reassign + delete do placeholder vazio apagava o histórico).
+  productId     Int?
+  variantId     Int
   supermarketId Int
   price         Float
-  quantity      Float       @default(1)
-  date          DateTime    @default(now())
+  quantity      Float          @default(1)
+  date          DateTime       @default(now())
   notes         String?
-  createdAt     DateTime    @default(now())
+  createdAt     DateTime       @default(now())
   createdById   Int?
   updatedById   Int?
-  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  supermarket   Supermarket @relation(fields: [supermarketId], references: [id], onDelete: Cascade)
-  createdBy     User?       @relation("PriceCreatedBy", fields: [createdById], references: [id])
-  updatedBy     User?       @relation("PriceUpdatedBy", fields: [updatedById], references: [id])
+  product       Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant       ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  supermarket   Supermarket    @relation(fields: [supermarketId], references: [id], onDelete: Cascade)
+  createdBy     User?          @relation("PriceCreatedBy", fields: [createdById], references: [id])
+  updatedBy     User?          @relation("PriceUpdatedBy", fields: [updatedById], references: [id])
 
   @@index([productId])
+  @@index([variantId])
   @@index([supermarketId])
   @@index([date])
 }

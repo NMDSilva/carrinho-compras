@@ -25,13 +25,28 @@ export interface AuthUser {
 export interface Product {
   id: number
   name: string
-  brand: string | null
-  unit: string
   category: string | null
+  needsReview: boolean
+  createdAt: string
+  updatedAt: string
+  variants?: ProductVariant[]
+  createdBy?: UserRef | null
+  updatedBy?: UserRef | null
+}
+
+/** Variante de um Product genérico: marca + tamanho de embalagem + unidade
+ * (ex: brand="Sidul", packageSize=1, unit="kg" → "Sidul 1Kg"). */
+export interface ProductVariant {
+  id: number
+  productId: number
+  brand: string | null
+  packageSize: number | null
+  unit: string
   createdAt: string
   updatedAt: string
   _count?: { prices: number }
   prices?: PriceRecord[]
+  product?: Product
   createdBy?: UserRef | null
   updatedBy?: UserRef | null
 }
@@ -49,14 +64,14 @@ export interface Supermarket {
 
 export interface PriceRecord {
   id: number
-  productId: number
+  variantId: number
   supermarketId: number
   price: number
   quantity: number
   date: string
   notes: string | null
   createdAt: string
-  product?: Product
+  variant?: ProductVariant
   supermarket?: Supermarket
   createdBy?: UserRef | null
   updatedBy?: UserRef | null
@@ -75,9 +90,13 @@ export interface DashboardStats {
     minPrice: number
     supermarketName: string
     date: string
+    variantBrand: string | null
+    variantUnit: string
   }[]
 }
 
+/** Comparação de preços de um produto genérico entre supermercados/marcas —
+ * ao nível do Product (várias variantes podem aparecer). */
 export interface CompareResult {
   product: Product
   prices: PriceRecord[]
@@ -88,8 +107,10 @@ export interface HistoryGroup {
   records: { date: string; price: number }[]
 }
 
+/** Histórico de preços de uma variante específica — misturar marcas na mesma
+ * série temporal seria enganador, por isso é sempre ao nível da variante. */
 export interface PriceHistory {
-  product: Product
+  variant: ProductVariant
   history: HistoryGroup[]
 }
 

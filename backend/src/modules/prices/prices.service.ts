@@ -3,16 +3,23 @@ import prisma from '../../shared/lib/prisma'
 const userSelect = { select: { id: true, name: true } }
 
 const priceInclude = {
-  product: true,
+  variant: { include: { product: true } },
   supermarket: true,
   createdBy: userSelect,
   updatedBy: userSelect,
 }
 
-export function listPrices(filters: { productId?: number; supermarketId?: number; limit: number; offset: number }) {
-  const { productId, supermarketId, limit, offset } = filters
+export function listPrices(filters: {
+  variantId?: number
+  productId?: number
+  supermarketId?: number
+  limit: number
+  offset: number
+}) {
+  const { variantId, productId, supermarketId, limit, offset } = filters
   const where = {
-    ...(productId ? { productId } : {}),
+    ...(variantId ? { variantId } : {}),
+    ...(productId ? { variant: { productId } } : {}),
     ...(supermarketId ? { supermarketId } : {}),
   }
   return Promise.all([
@@ -54,17 +61,25 @@ export function findProductById(id: number) {
   return prisma.product.findUnique({ where: { id } })
 }
 
+export function findVariantById(id: number) {
+  return prisma.productVariant.findUnique({ where: { id }, include: { product: true } })
+}
+
+// Todos os preços de um produto genérico, através de todas as suas variantes
+// — usado na comparação entre supermercados/marcas (compareProductPrices).
 export function listProductPrices(productId: number) {
   return prisma.priceRecord.findMany({
-    where: { productId },
-    include: { supermarket: true, createdBy: userSelect },
+    where: { variant: { productId } },
+    include: { variant: true, supermarket: true, createdBy: userSelect },
     orderBy: { date: 'desc' },
   })
 }
 
-export function listPriceHistory(productId: number, supermarketFilter?: number[]) {
+// Histórico de preços de UMA variante — misturar marcas diferentes na mesma
+// série temporal seria enganador, por isso é sempre ao nível da variante.
+export function listPriceHistory(variantId: number, supermarketFilter?: number[]) {
   return prisma.priceRecord.findMany({
-    where: { productId, ...(supermarketFilter ? { supermarketId: { in: supermarketFilter } } : {}) },
+    where: { variantId, ...(supermarketFilter ? { supermarketId: { in: supermarketFilter } } : {}) },
     include: { supermarket: true },
     orderBy: { date: 'asc' },
   })
@@ -76,26 +91,38 @@ export function getDashboardCounts() {
     prisma.supermarket.count(),
     prisma.priceRecord.count(),
     prisma.priceRecord.findMany({
-      include: { product: true, supermarket: true, createdBy: userSelect },
+      include: { variant: { include: { product: true } }, supermarket: true, createdBy: userSelect },
       orderBy: { createdAt: 'desc' },
       take: 5,
     }),
   ])
 }
 
+// Melhor preço por produto genérico, independentemente da marca/variante —
+// única query SQL raw do projeto (o Prisma Client não gera DISTINCT ON).
 export function getCheapestByProduct() {
-  // Preço mais barato por produto (PostgreSQL DISTINCT ON)
   return prisma.$queryRaw<
-    { productId: number; productName: string; minPrice: number; supermarketName: string; date: Date }[]
+    {
+      productId: number
+      productName: string
+      minPrice: number
+      supermarketName: string
+      date: Date
+      variantBrand: string | null
+      variantUnit: string
+    }[]
   >`
     SELECT DISTINCT ON ("p"."id")
       "p"."id" AS "productId",
       "p"."name" AS "productName",
       "pr"."price" AS "minPrice",
       "s"."name" AS "supermarketName",
-      "pr"."date" AS "date"
+      "pr"."date" AS "date",
+      "pv"."brand" AS "variantBrand",
+      "pv"."unit" AS "variantUnit"
     FROM "PriceRecord" pr
-    JOIN "Product" p ON p.id = pr."productId"
+    JOIN "ProductVariant" pv ON pv.id = pr."variantId"
+    JOIN "Product" p ON p.id = pv."productId"
     JOIN "Supermarket" s ON s.id = pr."supermarketId"
     ORDER BY "p"."id", "pr"."price" ASC
     LIMIT 10

@@ -15,6 +15,7 @@ import {
   priceUpdateBodySchema,
   priceIdParamSchema,
   productIdParamSchema,
+  variantIdParamSchema,
   priceListQuerySchema,
   priceHistoryQuerySchema,
 } from './prices.schema'
@@ -34,11 +35,11 @@ const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
     handler: compareProductPrices,
   })
 
-  fastify.get('/history/:productId', {
+  fastify.get('/history/:variantId', {
     schema: {
       tags: ['Preços'],
-      summary: 'Histórico de preços de um produto',
-      params: productIdParamSchema,
+      summary: 'Histórico de preços de uma variante',
+      params: variantIdParamSchema,
       querystring: priceHistoryQuerySchema,
     },
     handler: getPriceHistory,

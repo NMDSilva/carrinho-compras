@@ -74,7 +74,7 @@ describe('prices routes', () => {
   it('cria preço autenticado', async () => {
     prismaMock.priceRecord.create.mockResolvedValueOnce({
       id: 1,
-      productId: 1,
+      variantId: 1,
       supermarketId: 1,
       price: 1.5,
       quantity: 1,
@@ -84,7 +84,7 @@ describe('prices routes', () => {
       method: 'POST',
       url: '/api/prices',
       headers: authHeader(app, { sub: 1, role: 'USER' }),
-      payload: { productId: 1, supermarketId: 1, price: 1.5 },
+      payload: { variantId: 1, supermarketId: 1, price: 1.5 },
     })
 
     expect(res.statusCode).toBe(201)
@@ -94,7 +94,7 @@ describe('prices routes', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/prices',
-      payload: { productId: 1, supermarketId: 1, price: 1.5 },
+      payload: { variantId: 1, supermarketId: 1, price: 1.5 },
     })
 
     expect(res.statusCode).toBe(401)
@@ -105,7 +105,7 @@ describe('prices routes', () => {
       method: 'POST',
       url: '/api/prices',
       headers: authHeader(app, { sub: 1, role: 'USER' }),
-      payload: { productId: 1, supermarketId: 1, price: -1 },
+      payload: { variantId: 1, supermarketId: 1, price: -1 },
     })
 
     expect(res.statusCode).toBe(400)

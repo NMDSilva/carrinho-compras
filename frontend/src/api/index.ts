@@ -1,6 +1,7 @@
 import { $fetch } from 'ofetch'
 import type {
   Product,
+  ProductVariant,
   Supermarket,
   PriceRecord,
   DashboardStats,
@@ -46,15 +47,29 @@ export const authApi = {
 
 // Produtos
 export const productsApi = {
-  getAll: (params?: { search?: string; category?: string }) =>
+  getAll: (params?: { search?: string; category?: string; needsReview?: boolean }) =>
     api<Product[]>('/products', { query: params }),
   getById: (id: number) => api<Product>(`/products/${id}`),
   getCategories: () => api<string[]>('/products/categories'),
-  create: (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | '_count' | 'prices'>) =>
+  create: (data: { name: string; category?: string | null }) =>
     api<Product>('/products', { method: 'POST', body: data }),
-  update: (id: number, data: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>) =>
+  update: (id: number, data: Partial<{ name: string; category: string | null }>) =>
     api<Product>(`/products/${id}`, { method: 'PUT', body: data }),
   delete: (id: number) => api(`/products/${id}`, { method: 'DELETE' }),
+  markReviewed: (id: number) => api<Product>(`/products/${id}/review`, { method: 'PATCH' }),
+}
+
+// Variantes de produto (marca + tamanho de embalagem + unidade)
+export const variantsApi = {
+  getByProduct: (productId: number) => api<ProductVariant[]>(`/products/${productId}/variants`),
+  getById: (id: number) => api<ProductVariant>(`/variants/${id}`),
+  create: (productId: number, data: { brand?: string | null; packageSize?: number | null; unit: string }) =>
+    api<ProductVariant>(`/products/${productId}/variants`, { method: 'POST', body: data }),
+  update: (id: number, data: Partial<{ brand: string | null; packageSize: number | null; unit: string }>) =>
+    api<ProductVariant>(`/variants/${id}`, { method: 'PUT', body: data }),
+  delete: (id: number) => api(`/variants/${id}`, { method: 'DELETE' }),
+  reassign: (id: number, productId: number) =>
+    api<ProductVariant>(`/variants/${id}/reassign`, { method: 'PATCH', body: { productId } }),
 }
 
 // Supermercados
@@ -78,23 +93,23 @@ export const usersApi = {
 
 // Preços
 export const pricesApi = {
-  getAll: (params?: { productId?: number; supermarketId?: number; limit?: number; offset?: number }) =>
+  getAll: (params?: { variantId?: number; productId?: number; supermarketId?: number; limit?: number; offset?: number }) =>
     api<PaginatedPrices>('/prices', { query: params }),
   getById: (id: number) => api<PriceRecord>(`/prices/${id}`),
   create: (data: {
-    productId: number
+    variantId: number
     supermarketId: number
     price: number
     quantity?: number
     date?: string
     notes?: string
   }) => api<PriceRecord>('/prices', { method: 'POST', body: data }),
-  update: (id: number, data: Partial<Omit<PriceRecord, 'id' | 'createdAt' | 'product' | 'supermarket'>>) =>
+  update: (id: number, data: Partial<Omit<PriceRecord, 'id' | 'createdAt' | 'variant' | 'supermarket'>>) =>
     api<PriceRecord>(`/prices/${id}`, { method: 'PUT', body: data }),
   delete: (id: number) => api(`/prices/${id}`, { method: 'DELETE' }),
   compare: (productId: number) => api<CompareResult>(`/prices/compare/${productId}`),
-  history: (productId: number, supermarketIds?: number[]) =>
-    api<PriceHistory>(`/prices/history/${productId}`, {
+  history: (variantId: number, supermarketIds?: number[]) =>
+    api<PriceHistory>(`/prices/history/${variantId}`, {
       query: supermarketIds?.length ? { supermarketIds: supermarketIds.join(',') } : {},
     }),
   dashboard: () => api<DashboardStats>('/prices/dashboard'),

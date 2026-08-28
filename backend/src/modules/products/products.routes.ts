@@ -7,9 +7,18 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  markProductReviewed,
+  getVariants,
+  createVariant,
 } from './products.controller'
 import { requireAuth } from '../../shared/middleware/auth.middleware'
-import { productBodySchema, productIdParamSchema, productQuerySchema } from './products.schema'
+import {
+  productBodySchema,
+  productIdParamSchema,
+  productQuerySchema,
+  productVariantsParamSchema,
+  variantBodySchema,
+} from './products.schema'
 
 const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/categories', {
@@ -71,6 +80,38 @@ const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
       params: productIdParamSchema,
     },
     handler: deleteProduct,
+  })
+
+  fastify.patch('/:id/review', {
+    onRequest: [requireAuth],
+    schema: {
+      tags: ['Produtos'],
+      summary: 'Marcar produto como revisto (limpa needsReview)',
+      security: [{ bearerAuth: [] }],
+      params: productIdParamSchema,
+    },
+    handler: markProductReviewed,
+  })
+
+  fastify.get('/:productId/variants', {
+    schema: {
+      tags: ['Produtos'],
+      summary: 'Listar variantes de um produto',
+      params: productVariantsParamSchema,
+    },
+    handler: getVariants,
+  })
+
+  fastify.post('/:productId/variants', {
+    onRequest: [requireAuth],
+    schema: {
+      tags: ['Produtos'],
+      summary: 'Criar variante de um produto',
+      security: [{ bearerAuth: [] }],
+      params: productVariantsParamSchema,
+      body: variantBodySchema,
+    },
+    handler: createVariant,
   })
 }
 

@@ -6,6 +6,11 @@ Este ficheiro fornece orientação ao Claude Code (claude.ai/code) ao trabalhar 
 
 Monorepo (npm workspaces) para uma aplicação de comparação de preços de supermercado: `shared` (schemas Zod + tipos), `backend` (API Fastify + Prisma), `frontend` (SPA Vue 3). Ver [`README.md`](./README.md) para setup local — este ficheiro foca-se em convenções e gotchas para trabalhar no código.
 
+## Objetivo
+
+O principal objetivo da aplicação é o registo de preços dos produtos, para sempre que seja necessário o utilizador saber o melhor preço de um respetivo produto, em que data estava aquele preço e em qual supermercado.
+Futuramente, será para existir um endpoint para cada utilizador criar a sua lista de compras. Ao ir registando os produtos necessários na sua lista, deverá ser informado do melhor preço, data e em qual supermercado foi comprado.
+
 ## Comandos
 
 - `npm run dev` — builda o `shared` e depois corre backend + frontend em simultâneo.

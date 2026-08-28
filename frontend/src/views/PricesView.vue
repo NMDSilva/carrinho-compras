@@ -12,18 +12,30 @@ const supermarkets = ref<Supermarket[]>([])
 const total = ref(0)
 const page = ref(0)
 const PAGE_SIZE = 15
-const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar preços', { immediate: true })
+const {
+  loading,
+  error,
+  run: runLoad,
+} = useAsyncAction('Erro ao carregar preços', { immediate: true })
 
 const filterProduct = ref<number | ''>('')
 const filterSupermarket = ref<number | ''>('')
 
 const showModal = ref(false)
 const editingPrice = ref<PriceRecord | null>(null)
-const { loading: saving, error: formError, run: runSave } = useAsyncAction('Erro ao guardar')
+const {
+  loading: saving,
+  error: formError,
+  run: runSave,
+} = useAsyncAction('Erro ao guardar')
 
 const deleteTarget = ref<PriceRecord | null>(null)
 const showDeleteConfirm = ref(false)
-const { loading: deleting, error: deleteError, run: runDelete } = useAsyncAction('Erro ao eliminar')
+const {
+  loading: deleting,
+  error: deleteError,
+  run: runDelete,
+} = useAsyncAction('Erro ao eliminar')
 
 const route = useRoute()
 const router = useRouter()
@@ -31,6 +43,7 @@ const router = useRouter()
 const today = new Date().toISOString().substring(0, 10)
 const form = ref({
   productId: '' as number | '',
+  variantId: '' as number | '',
   supermarketId: '' as number | '',
   price: '' as number | '',
   quantity: 1,
@@ -38,7 +51,25 @@ const form = ref({
   notes: '',
 })
 
+// Variantes do produto selecionado no formulário — os produtos já vêm com as
+// variantes incluídas (productsApi.getAll), não é preciso um pedido extra.
+const formVariants = computed(
+  () =>
+    products.value.find((p) => p.id === form.value.productId)?.variants ?? []
+)
+
 const totalPages = computed(() => Math.ceil(total.value / PAGE_SIZE))
+
+function formatVariant(variant: {
+  brand: string | null
+  packageSize: number | null
+  unit: string
+}) {
+  const size = variant.packageSize
+    ? `${variant.packageSize}${variant.unit}`
+    : variant.unit
+  return variant.brand ? `${variant.brand} ${size}` : `Genérico ${size}`
+}
 
 async function loadPrices() {
   const result = await runLoad(() =>
@@ -80,6 +111,7 @@ function openCreate() {
   editingPrice.value = null
   form.value = {
     productId: '',
+    variantId: '',
     supermarketId: '',
     price: '',
     quantity: 1,
@@ -93,7 +125,8 @@ function openCreate() {
 function openEdit(price: PriceRecord) {
   editingPrice.value = price
   form.value = {
-    productId: price.productId,
+    productId: price.variant?.product?.id ?? '',
+    variantId: price.variantId,
     supermarketId: price.supermarketId,
     price: price.price,
     quantity: price.quantity,
@@ -104,18 +137,23 @@ function openEdit(price: PriceRecord) {
   showModal.value = true
 }
 
+function onProductChange() {
+  // muda o produto genérico — a variante anterior já não é válida
+  form.value.variantId = ''
+}
+
 async function save() {
   if (
-    !form.value.productId ||
+    !form.value.variantId ||
     !form.value.supermarketId ||
     form.value.price === ''
   ) {
-    formError.value = 'Produto, supermercado e preço são obrigatórios'
+    formError.value = 'Produto, variante, supermercado e preço são obrigatórios'
     return
   }
   const result = await runSave(async () => {
     const data = {
-      productId: Number(form.value.productId),
+      variantId: Number(form.value.variantId),
       supermarketId: Number(form.value.supermarketId),
       price: Number(form.value.price),
       quantity: form.value.quantity,
@@ -206,18 +244,18 @@ function formatDate(date: string) {
     <div class="flex flex-col sm:flex-row gap-3 mb-6">
       <select
         v-model="filterProduct"
-        @change="applyFilters"
         class="input max-w-xs"
+        @change="applyFilters"
       >
         <option value="">Todos os produtos</option>
         <option v-for="p in products" :key="p.id" :value="p.id">
-          {{ p.name }}{{ p.brand ? ` (${p.brand})` : '' }}
+          {{ p.name }}
         </option>
       </select>
       <select
         v-model="filterSupermarket"
-        @change="applyFilters"
         class="input max-w-xs"
+        @change="applyFilters"
       >
         <option value="">Todos os supermercados</option>
         <option v-for="s in supermarkets" :key="s.id" :value="s.id">
@@ -272,9 +310,11 @@ function formatDate(date: string) {
             class="hover:bg-gray-50 transition-colors"
           >
             <td class="px-6 py-4">
-              <p class="font-medium text-gray-900">{{ price.product?.name }}</p>
-              <p v-if="price.product?.brand" class="text-xs text-gray-400">
-                {{ price.product.brand }}
+              <p class="font-medium text-gray-900">
+                {{ price.variant?.product?.name }}
+              </p>
+              <p v-if="price.variant" class="text-xs text-gray-400">
+                {{ formatVariant(price.variant) }}
               </p>
             </td>
             <td class="px-6 py-4 text-gray-600">
@@ -310,12 +350,12 @@ function formatDate(date: string) {
             </td>
             <td class="px-6 py-4">
               <div class="flex items-center justify-end gap-2">
-                <button @click="openEdit(price)" class="btn-secondary btn-sm">
+                <button class="btn-secondary btn-sm" @click="openEdit(price)">
                   Editar
                 </button>
                 <button
-                  @click="openDeleteConfirm(price)"
                   class="btn-danger btn-sm"
+                  @click="openDeleteConfirm(price)"
                 >
                   Eliminar
                 </button>
@@ -362,10 +402,27 @@ function formatDate(date: string) {
       <div class="space-y-4">
         <div>
           <label class="label">Produto *</label>
-          <select v-model="form.productId" class="input">
+          <select
+            v-model="form.productId"
+            class="input"
+            @change="onProductChange"
+          >
             <option value="">Selecionar produto…</option>
             <option v-for="p in products" :key="p.id" :value="p.id">
-              {{ p.name }}{{ p.brand ? ` (${p.brand})` : '' }} — {{ p.unit }}
+              {{ p.name }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Variante (marca) *</label>
+          <select
+            v-model="form.variantId"
+            class="input"
+            :disabled="!form.productId"
+          >
+            <option value="">Selecionar variante…</option>
+            <option v-for="v in formVariants" :key="v.id" :value="v.id">
+              {{ formatVariant(v) }}
             </option>
           </select>
         </div>
