@@ -28,7 +28,7 @@ Ver [`../CLAUDE.md`](../CLAUDE.md) para convenções técnicas, comandos e detal
 | ------------------------ | --------------------- | ----------------- | -------------------------------------------------------------------------- |
 | `/login`                 | `LoginView`           | público           | Login e registo de conta                                                   |
 | `/`                      | `DashboardView`       | autenticado       | Estatísticas gerais, últimos preços registados, produtos mais baratos      |
-| `/produtos`              | `ProductsView`        | autenticado       | Listar, pesquisar, criar, editar e eliminar produtos genéricos e as suas variantes (marca/embalagem) |
+| `/produtos`              | `ProductsView`        | autenticado       | Listar, pesquisar, criar, editar e eliminar produtos genéricos e as suas variantes (marca/embalagem); mover uma variante para outro produto |
 | `/produtos/:id/editar`   | `ProductsView`        | autenticado       | Mesma view, em modo de edição de um produto específico                    |
 | `/produtos/revisao`      | `ReviewProductsView`  | autenticado       | Produtos criados automaticamente pela ingestão de faturas (`needsReview`) — reatribuir a variante para um produto existente ou marcar como revisto |
 | `/supermercados`         | `SupermarketsView`    | autenticado       | Listar, criar, editar e eliminar supermercados                             |
@@ -67,7 +67,7 @@ Product ──< ProductVariant ──< PriceRecord >── Supermarket
 - **Marcar como revisto** (`PATCH /api/products/:id/review`) — limpa `needsReview`; ação dedicada (não faz parte do update genérico) usada pela fila `/produtos/revisao`.
 - Listar / criar variantes de um produto (`GET/POST /api/products/:productId/variants`, criar requer autenticação).
 - Ver / editar / eliminar uma variante (`GET/PUT/DELETE /api/variants/:id`, editar/eliminar requerem autenticação e ownership).
-- **Reatribuir variante** (`PATCH /api/variants/:id/reassign`) — move uma variante para outro produto genérico (ferramenta de arrumação manual); se o produto de origem ficar sem variantes, é eliminado automaticamente.
+- **Reatribuir variante** (`PATCH /api/variants/:id/reassign`) — move uma variante para outro produto genérico (ferramenta de arrumação manual); se o produto de origem ficar sem variantes, é eliminado automaticamente. Disponível tanto em `/produtos` (botão "Mover" em cada variante, com pesquisa do produto destino) como em `/produtos/revisao`.
 
 ### Supermercados
 - Listar e ver detalhe — público.

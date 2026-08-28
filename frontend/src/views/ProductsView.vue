@@ -61,6 +61,19 @@ const {
   run: runDeleteVariant,
 } = useAsyncAction('Erro ao eliminar variante')
 
+// --- Mover variante para outro produto ---
+const showReassignModal = ref(false)
+const reassignSource = ref<ProductVariant | null>(null)
+const reassignQuery = ref('')
+const reassignResults = ref<Product[]>([])
+const reassignTarget = ref<Product | null>(null)
+const {
+  loading: reassigning,
+  error: reassignError,
+  run: runReassign,
+} = useAsyncAction('Erro ao mover variante')
+let reassignDebounce: ReturnType<typeof setTimeout> | undefined
+
 const route = useRoute()
 const router = useRouter()
 
@@ -215,6 +228,51 @@ async function confirmDeleteVariant() {
   if (result !== undefined) {
     showVariantDeleteConfirm.value = false
     variantDeleteTarget.value = null
+    await loadProducts()
+  }
+}
+
+// --- Mover variante para outro produto ---
+
+function openReassign(variant: ProductVariant) {
+  reassignSource.value = variant
+  reassignQuery.value = ''
+  reassignResults.value = []
+  reassignTarget.value = null
+  reassignError.value = ''
+  showReassignModal.value = true
+}
+
+function searchReassignTarget() {
+  clearTimeout(reassignDebounce)
+  reassignDebounce = setTimeout(async () => {
+    const query = reassignQuery.value.trim()
+    if (!query) {
+      reassignResults.value = []
+      return
+    }
+    const results = await productsApi.getAll({ search: query })
+    // não faz sentido mover a variante para o mesmo produto onde já está
+    reassignResults.value = results.filter((p) => p.id !== reassignSource.value?.productId)
+  }, 300)
+}
+
+function selectReassignTarget(product: Product) {
+  reassignTarget.value = product
+  reassignQuery.value = product.name
+  reassignResults.value = []
+}
+
+async function confirmReassign() {
+  if (!reassignSource.value || !reassignTarget.value) {
+    reassignError.value = 'Escolhe o produto de destino'
+    return
+  }
+  const source = reassignSource.value
+  const target = reassignTarget.value
+  const result = await runReassign(() => variantsApi.reassign(source.id, target.id))
+  if (result !== undefined) {
+    showReassignModal.value = false
     await loadProducts()
   }
 }
@@ -431,6 +489,12 @@ async function confirmDeleteVariant() {
                             Editar
                           </button>
                           <button
+                            class="btn-secondary btn-sm"
+                            @click="openReassign(variant)"
+                          >
+                            Mover
+                          </button>
+                          <button
                             class="btn-danger btn-sm"
                             @click="openVariantDeleteConfirm(variant)"
                           >
@@ -546,5 +610,51 @@ async function confirmDeleteVariant() {
     <p v-if="variantDeleteError" class="text-sm text-red-600 mt-2">
       {{ variantDeleteError }}
     </p>
+
+    <FormDialog
+      v-model="showReassignModal"
+      title="Mover variante para outro produto"
+      submit-label="Mover"
+      :loading="reassigning"
+      :error="reassignError"
+      @submit="confirmReassign"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-gray-500">
+          A variante
+          <b class="text-gray-900">{{
+            reassignSource?.brand ?? 'Genérico'
+          }}</b>
+          vai passar a pertencer a outro produto. Se o produto de origem
+          ficar sem mais nenhuma variante, é eliminado automaticamente.
+        </p>
+        <div class="relative">
+          <label class="label">Produto de destino</label>
+          <input
+            v-model="reassignQuery"
+            type="text"
+            class="input"
+            placeholder="Pesquisar produto de destino..."
+            @input="searchReassignTarget"
+          />
+          <ul
+            v-if="reassignResults.length > 0"
+            class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+          >
+            <li
+              v-for="candidate in reassignResults"
+              :key="candidate.id"
+              class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
+              @click="selectReassignTarget(candidate)"
+            >
+              {{ candidate.name }}
+            </li>
+          </ul>
+        </div>
+        <p v-if="reassignTarget" class="text-sm text-brand-700">
+          Destino selecionado: <b>{{ reassignTarget.name }}</b>
+        </p>
+      </div>
+    </FormDialog>
   </div>
 </template>
