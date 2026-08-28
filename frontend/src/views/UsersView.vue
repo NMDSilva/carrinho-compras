@@ -4,7 +4,7 @@ import { usersApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import type { User } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
-import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
 
 const auth = useAuthStore()
 const users = ref<User[]>([])
@@ -21,7 +21,7 @@ const { loading: deleteLoading, error: deleteError, run: runDelete } = useAsyncA
 
 async function loadUsers() {
   const result = await runLoad(() => usersApi.getAll())
-  if (result !== undefined) users.value = result
+  if (result !== ASYNC_ACTION_FAILED) users.value = result
 }
 
 function openEdit(user: User) {
@@ -44,7 +44,7 @@ async function saveEdit() {
 
     return usersApi.update(target.id, payload as Parameters<typeof usersApi.update>[1])
   })
-  if (updated !== undefined) {
+  if (updated !== ASYNC_ACTION_FAILED) {
     const idx = users.value.findIndex((u) => u.id === updated.id)
     if (idx !== -1) users.value[idx] = updated
     showEditModal.value = false
@@ -60,7 +60,7 @@ async function confirmDelete() {
   if (!deleteTarget.value) return
   const target = deleteTarget.value
   const result = await runDelete(() => usersApi.delete(target.id))
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     users.value = users.value.filter((u) => u.id !== target.id)
     showDeleteConfirm.value = false
     deleteTarget.value = null

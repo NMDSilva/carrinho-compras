@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { supermarketsApi } from '@/api'
 import type { Supermarket } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
-import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
 
 const supermarkets = ref<Supermarket[]>([])
 const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar supermercados', { immediate: true })
@@ -19,7 +19,7 @@ const { loading: deleting, error: deleteError, run: runDelete } = useAsyncAction
 
 async function loadSupermarkets() {
   const result = await runLoad(() => supermarketsApi.getAll())
-  if (result !== undefined) supermarkets.value = result
+  if (result !== ASYNC_ACTION_FAILED) supermarkets.value = result
 }
 
 onMounted(loadSupermarkets)
@@ -51,7 +51,7 @@ async function save() {
       await supermarketsApi.create(data)
     }
   })
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     showModal.value = false
     await loadSupermarkets()
   }
@@ -66,7 +66,7 @@ async function confirmDelete() {
   if (!deleteTarget.value) return
   const target = deleteTarget.value
   const result = await runDelete(() => supermarketsApi.delete(target.id))
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     showDeleteConfirm.value = false
     deleteTarget.value = null
     await loadSupermarkets()

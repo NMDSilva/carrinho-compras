@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
 
 describe('useAsyncAction', () => {
   it('loading começa a false por omissão', () => {
@@ -27,16 +27,29 @@ describe('useAsyncAction', () => {
     expect(error.value).toBe('')
   })
 
-  it('captura o erro e devolve undefined sem propagar a exceção', async () => {
+  it('captura o erro e devolve o sentinela ASYNC_ACTION_FAILED sem propagar a exceção', async () => {
     const { loading, error, run } = useAsyncAction('Erro ao guardar')
 
     const result = await run(async () => {
       throw { data: { error: 'Email já registado' } }
     })
 
-    expect(result).toBeUndefined()
+    expect(result).toBe(ASYNC_ACTION_FAILED)
     expect(loading.value).toBe(false)
     expect(error.value).toBe('Email já registado')
+  })
+
+  it('distingue sucesso com valor undefined (ex: DELETE 204) de uma falha', async () => {
+    // Regressão: um DELETE bem-sucedido responde 204 e o ofetch resolve
+    // `undefined` — se `run` devolvesse `undefined` também no erro, todos os
+    // `if (result !== undefined)` das views tratavam um delete OK como falha
+    // (o popup nunca fechava, a lista nunca recarregava).
+    const { run } = useAsyncAction('Erro ao eliminar')
+
+    const result = await run(async () => undefined)
+
+    expect(result).toBeUndefined()
+    expect(result).not.toBe(ASYNC_ACTION_FAILED)
   })
 
   it('usa a mensagem de fallback quando o erro não tem mensagem da API', async () => {

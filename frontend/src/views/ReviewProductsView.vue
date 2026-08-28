@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { productsApi, variantsApi } from '@/api'
 import type { Product } from '@/types'
-import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
 
 const products = ref<Product[]>([])
 const {
@@ -26,7 +26,7 @@ let searchDebounce: ReturnType<typeof setTimeout> | undefined
 
 async function loadProducts() {
   const result = await runLoad(() => productsApi.getAll({ needsReview: true }))
-  if (result !== undefined) products.value = result
+  if (result !== ASYNC_ACTION_FAILED) products.value = result
 }
 
 onMounted(loadProducts)
@@ -62,7 +62,7 @@ async function reassign(product: Product) {
   const result = await runReassign(() =>
     variantsApi.reassign(variant.id, target.id)
   )
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     await loadProducts()
   }
 }
@@ -71,7 +71,7 @@ async function markReviewed(product: Product) {
   const result = await runMarkReviewed(() =>
     productsApi.markReviewed(product.id)
   )
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     await loadProducts()
   }
 }

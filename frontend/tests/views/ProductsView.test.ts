@@ -68,6 +68,32 @@ describe('ProductsView', () => {
     expect(wrapper.text()).toContain('Sessão expirada')
   })
 
+  it('elimina produto com sucesso: fecha o popup e recarrega a lista', async () => {
+    // Regressão: DELETE bem-sucedido responde 204 (ofetch resolve
+    // `undefined`) — com o bug antigo isto era tratado como falha, o popup
+    // de confirmação nunca fechava e a lista nunca recarregava.
+    getAllMock.mockResolvedValueOnce([product]).mockResolvedValueOnce([])
+    deleteMock.mockResolvedValueOnce(undefined)
+    const router = await setupRouter('/produtos')
+    const wrapper = mount(ProductsView, { global: { plugins: [router] } })
+
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('button.btn-danger').trigger('click')
+    await wrapper.vm.$nextTick()
+    const dangerButtons = wrapper.findAll('button.btn-danger')
+    await dangerButtons[1].trigger('click')
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.vm.$nextTick()
+
+    expect(deleteMock).toHaveBeenCalledWith(1)
+    // se o bug reaparecer, loadProducts() nunca é chamado a seguir ao
+    // delete e isto fica em 1 (só a carga inicial)
+    expect(getAllMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('Nenhum produto encontrado')
+  })
+
   it('mostra a mensagem de erro real quando falha ao eliminar', async () => {
     getAllMock.mockResolvedValue([product])
     deleteMock.mockRejectedValue({ data: { error: 'Produto tem preços associados' } })

@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { pricesApi, productsApi, supermarketsApi } from '@/api'
 import type { PriceRecord, Product, Supermarket } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
-import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
 
 const prices = ref<PriceRecord[]>([])
 const products = ref<Product[]>([])
@@ -84,7 +84,7 @@ async function loadPrices() {
       offset: page.value * PAGE_SIZE,
     })
   )
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     prices.value = result.data
     total.value = result.total
   }
@@ -166,7 +166,7 @@ async function save() {
       await pricesApi.create(data)
     }
   })
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     showModal.value = false
     await loadPrices()
   }
@@ -181,7 +181,7 @@ async function confirmDelete() {
   if (!deleteTarget.value) return
   const target = deleteTarget.value
   const result = await runDelete(() => pricesApi.delete(target.id))
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     showDeleteConfirm.value = false
     deleteTarget.value = null
     await loadPrices()

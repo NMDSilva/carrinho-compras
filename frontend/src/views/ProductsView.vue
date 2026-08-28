@@ -4,7 +4,7 @@ import { productsApi, variantsApi } from '@/api'
 import { useRoute, useRouter } from 'vue-router'
 import type { Product, ProductVariant } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
-import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
 
 const products = ref<Product[]>([])
 const categories = ref<string[]>([])
@@ -84,7 +84,7 @@ async function loadProducts() {
       category: filterCategory.value || undefined,
     })
   )
-  if (result !== undefined) products.value = result
+  if (result !== ASYNC_ACTION_FAILED) products.value = result
 }
 
 async function loadCategories() {
@@ -146,7 +146,7 @@ async function saveProduct() {
       await productsApi.create(data)
     }
   })
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     showModal.value = false
     await loadProducts()
     await loadCategories()
@@ -162,7 +162,7 @@ async function confirmDelete() {
   if (!deleteTarget.value) return
   const target = deleteTarget.value
   const result = await runDelete(() => productsApi.delete(target.id))
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     showDeleteConfirm.value = false
     deleteTarget.value = null
     await loadProducts()
@@ -210,7 +210,7 @@ async function saveVariant() {
       await variantsApi.create(variantProductId.value as number, data)
     }
   })
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     showVariantModal.value = false
     await loadProducts()
   }
@@ -225,7 +225,7 @@ async function confirmDeleteVariant() {
   if (!variantDeleteTarget.value) return
   const target = variantDeleteTarget.value
   const result = await runDeleteVariant(() => variantsApi.delete(target.id))
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     showVariantDeleteConfirm.value = false
     variantDeleteTarget.value = null
     await loadProducts()
@@ -271,7 +271,7 @@ async function confirmReassign() {
   const source = reassignSource.value
   const target = reassignTarget.value
   const result = await runReassign(() => variantsApi.reassign(source.id, target.id))
-  if (result !== undefined) {
+  if (result !== ASYNC_ACTION_FAILED) {
     showReassignModal.value = false
     await loadProducts()
   }

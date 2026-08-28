@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { pricesApi } from '@/api'
 import type { DashboardStats } from '@/types'
-import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
 
 const stats = ref<DashboardStats | null>(null)
 const {
@@ -13,7 +13,7 @@ const {
 
 onMounted(async () => {
   const result = await runLoad(() => pricesApi.dashboard())
-  if (result !== undefined) stats.value = result
+  if (result !== ASYNC_ACTION_FAILED) stats.value = result
 })
 
 function formatPrice(price: number) {

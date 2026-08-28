@@ -2,7 +2,7 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { pricesApi, productsApi, supermarketsApi } from '@/api'
 import type { Product, Supermarket, CompareResult, PriceHistory } from '@/types'
-import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
 
 const products = ref<Product[]>([])
 const supermarkets = ref<Supermarket[]>([])
@@ -53,7 +53,7 @@ async function loadCompare() {
   const result = await runCompare(() =>
     pricesApi.compare(Number(selectedProduct.value))
   )
-  if (result !== undefined) compareResult.value = result
+  if (result !== ASYNC_ACTION_FAILED) compareResult.value = result
 }
 
 async function loadHistory() {
@@ -64,7 +64,7 @@ async function loadHistory() {
       selectedSupermarkets.value.length ? selectedSupermarkets.value : undefined
     )
   )
-  if (result !== undefined) historyResult.value = result
+  if (result !== ASYNC_ACTION_FAILED) historyResult.value = result
 }
 
 watch(selectedProduct, () => {

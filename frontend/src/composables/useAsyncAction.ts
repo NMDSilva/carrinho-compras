@@ -1,6 +1,13 @@
 import { ref } from 'vue'
 import { extractApiError } from '@/utils/errors'
 
+// Sentinela devolvida por `run` quando `fn` falha. Não pode ser `undefined`:
+// pedidos DELETE respondem 204 (sem corpo), que o ofetch resolve como
+// `undefined` — se o erro também fosse `undefined`, um delete bem-sucedido
+// seria indistinguível de uma falha em todos os `if (result !== undefined)`
+// espalhados pelas views (o popup nunca fechava, a lista nunca recarregava).
+export const ASYNC_ACTION_FAILED = Symbol('async-action-failed')
+
 // Encapsula o padrão loading/error/try-catch repetido em quase todas as
 // views (carregar uma lista, guardar um formulário, eliminar um registo).
 // Cada instância tem o seu próprio loading/error — usa uma instância por
@@ -13,14 +20,14 @@ export function useAsyncAction(fallbackError = 'Ocorreu um erro', options: { imm
   const loading = ref(options.immediate ?? false)
   const error = ref('')
 
-  async function run<T>(fn: () => Promise<T>): Promise<T | undefined> {
+  async function run<T>(fn: () => Promise<T>): Promise<T | typeof ASYNC_ACTION_FAILED> {
     loading.value = true
     error.value = ''
     try {
       return await fn()
     } catch (e: unknown) {
       error.value = extractApiError(e, fallbackError)
-      return undefined
+      return ASYNC_ACTION_FAILED
     } finally {
       loading.value = false
     }
