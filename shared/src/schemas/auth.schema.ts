@@ -23,6 +23,27 @@ export const updateMeSchema = z
     path: ['currentPassword'],
   })
 
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1),
+})
+
+export const resendVerificationSchema = z.object({
+  email: z.string().email(),
+})
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+})
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(6),
+})
+
 export type RegisterInput = z.infer<typeof registerSchema>
 export type LoginInput = z.infer<typeof loginSchema>
 export type UpdateMeInput = z.infer<typeof updateMeSchema>
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>
+export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>

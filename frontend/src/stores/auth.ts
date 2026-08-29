@@ -41,10 +41,10 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = res.user
   }
 
+  // Conta fica por confirmar até se clicar no link do email — sem login
+  // automático (ao contrário de login()), por isso não guarda token/user.
   async function register(name: string, email: string, password: string) {
-    const res = await authApi.register(name, email, password)
-    setToken(res.token)
-    user.value = res.user
+    await authApi.register(name, email, password)
   }
 
   async function updateMe(data: { name?: string; email?: string; currentPassword?: string; newPassword?: string }) {

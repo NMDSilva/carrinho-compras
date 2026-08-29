@@ -86,17 +86,15 @@ describe('auth store', () => {
     expect(localStorage.getItem('token')).toBeNull()
   })
 
-  it('register guarda o token e o utilizador', async () => {
-    registerMock.mockResolvedValueOnce({
-      token: 'xyz789',
-      user: { id: 2, name: 'Bruno', email: 'bruno@example.com', role: 'USER' },
-    })
+  it('register não faz login automático — conta fica por confirmar', async () => {
+    registerMock.mockResolvedValueOnce({ message: 'Conta criada. Verifica o teu email.' })
 
     const auth = useAuthStore()
     await auth.register('Bruno', 'bruno@example.com', 'segredo')
 
-    expect(auth.isAuthenticated).toBe(true)
-    expect(auth.user?.email).toBe('bruno@example.com')
+    expect(registerMock).toHaveBeenCalledWith('Bruno', 'bruno@example.com', 'segredo')
+    expect(auth.isAuthenticated).toBe(false)
+    expect(auth.user).toBeNull()
   })
 
   it('updateMe atualiza o utilizador em sessão', async () => {

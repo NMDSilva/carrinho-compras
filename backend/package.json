@@ -30,6 +30,7 @@
     "fastify-type-provider-zod": "^4.0.2",
     "pg": "^8.20.0",
     "prisma": "^7.7.0",
+    "resend": "^6.25.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {

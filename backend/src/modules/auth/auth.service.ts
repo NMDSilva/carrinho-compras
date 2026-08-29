@@ -1,3 +1,4 @@
+import { randomBytes, createHash } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { Prisma } from '@prisma/client'
 import prisma from '../../shared/lib/prisma'
@@ -9,6 +10,9 @@ const profileSelect = {
   role: true,
   createdAt: true,
 } as const
+
+const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000 // 24h
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000 // 1h
 
 export function findUserByEmail(email: string) {
   return prisma.user.findUnique({ where: { email } })
@@ -63,4 +67,70 @@ export function comparePassword(plain: string, hashed: string) {
 
 export function hashPassword(plain: string) {
   return bcrypt.hash(plain, 12)
+}
+
+// --- Verificação de email / reposição de password ---
+//
+// Nunca se guarda o token em texto simples — só o hash SHA-256. O valor
+// enviado por email é o token cru; para o validar, faz-se hash do que chega
+// e compara-se com o hash guardado. Mesmo com acesso direto à BD (ex: um
+// dump), não dá para usar um link de verificação/reposição ainda válido.
+
+function generateRawToken() {
+  return randomBytes(32).toString('hex')
+}
+
+function hashToken(raw: string) {
+  return createHash('sha256').update(raw).digest('hex')
+}
+
+export async function setVerificationToken(userId: number): Promise<string> {
+  const raw = generateRawToken()
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      verificationTokenHash: hashToken(raw),
+      verificationTokenExpiresAt: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS),
+    },
+  })
+  return raw
+}
+
+// Devolve o utilizador confirmado, ou null se o token for inválido/expirado.
+export async function verifyEmailToken(rawToken: string) {
+  const user = await prisma.user.findUnique({ where: { verificationTokenHash: hashToken(rawToken) } })
+  if (!user || !user.verificationTokenExpiresAt || user.verificationTokenExpiresAt < new Date()) return null
+
+  return prisma.user.update({
+    where: { id: user.id },
+    data: { emailVerified: true, verificationTokenHash: null, verificationTokenExpiresAt: null },
+  })
+}
+
+export async function setPasswordResetToken(userId: number): Promise<string> {
+  const raw = generateRawToken()
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      passwordResetTokenHash: hashToken(raw),
+      passwordResetTokenExpiresAt: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
+    },
+  })
+  return raw
+}
+
+// Devolve o utilizador com a password já atualizada, ou null se o token for
+// inválido/expirado.
+export async function resetPasswordWithToken(rawToken: string, newPassword: string) {
+  const user = await prisma.user.findUnique({ where: { passwordResetTokenHash: hashToken(rawToken) } })
+  if (!user || !user.passwordResetTokenExpiresAt || user.passwordResetTokenExpiresAt < new Date()) return null
+
+  return prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: await hashPassword(newPassword),
+      passwordResetTokenHash: null,
+      passwordResetTokenExpiresAt: null,
+    },
+  })
 }

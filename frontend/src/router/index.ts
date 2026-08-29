@@ -12,6 +12,24 @@ const router = createRouter({
       meta: { public: true },
     },
     {
+      path: '/verificar-email',
+      name: 'verify-email',
+      component: () => import('@/views/VerifyEmailView.vue'),
+      meta: { public: true },
+    },
+    {
+      path: '/recuperar-password',
+      name: 'forgot-password',
+      component: () => import('@/views/ForgotPasswordView.vue'),
+      meta: { public: true },
+    },
+    {
+      path: '/repor-password',
+      name: 'reset-password',
+      component: () => import('@/views/ResetPasswordView.vue'),
+      meta: { public: true },
+    },
+    {
       path: '/',
       name: 'dashboard',
       component: DashboardView,

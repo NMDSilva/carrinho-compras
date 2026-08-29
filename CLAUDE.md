@@ -48,13 +48,17 @@ Corre `npm run db:generate` antes de testar/buildar o backend se ainda não o ti
 - Os origins de CORS estão fixos no código em `app.ts` (não vêm de env var) — mudar domínios permitidos implica editar código.
 - **`/docs` (Swagger UI)** só fica registado fora de `NODE_ENV=production` — em produção devolve 404 de propósito (menos superfície de ataque). `/docs/json` (a spec OpenAPI crua) continua acessível em qualquer ambiente.
 - **Rate limiting**: `@fastify/rate-limit` está registado com `global: false` — só se aplica onde uma rota define `config: { rateLimit: {...} }`. `/api/auth/login` e `/api/auth/register` têm 5 pedidos/minuto por IP. Decisão deliberada: o registo continua a responder 409 "Email já registado" (permite enumeração de email), mitigado só pelo rate limit — não escondemos essa mensagem, porque a UX de dizer "já tens conta, inicia sessão" foi considerada mais valiosa que fechar esse vetor de baixa severidade numa app pessoal.
+- **Verificação de email / reposição de password** (`backend/src/modules/auth/`, `backend/src/shared/lib/email.ts`): conta nova fica `emailVerified: false` e o `login` responde 403 com `code: "EMAIL_NOT_VERIFIED"` até se clicar no link do email (`POST /api/auth/verify-email`). Tokens de verificação (24h) e de reposição de password (1h) guardam-se como hash SHA-256 em `User`, nunca em texto simples. Envio de email via Resend (`RESEND_API_KEY`) — sem essa variável definida, o email fica só registado na consola (`console.log`), pensado para desenvolvimento local sem precisar de conta Resend nem de um serviço tipo Mailhog. `/api/auth/forgot-password` e `/api/auth/resend-verification` respondem sempre a mesma mensagem genérica de sucesso, exista ou não a conta (evita enumeração de email por esses dois endpoints). **Contas criadas antes desta funcionalidade existir ficaram `emailVerified: true` por backfill na migration** — só contas novas precisam de confirmar.
 
 ## Variáveis de ambiente (backend/.env)
 
-`DATABASE_URL`, `POSTGRES_PASSWORD`, `PORT`, `NODE_ENV`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `N8N_API_KEY`.
+`DATABASE_URL`, `POSTGRES_PASSWORD`, `PORT`, `NODE_ENV`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `N8N_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_URL`.
 
 - Se `JWT_SECRET` não estiver definido, a app cai silenciosamente para `'dev-secret'` — nunca publicar sem o definir explicitamente.
 - Se `N8N_API_KEY` não estiver definido, `/api/compras` responde 500 em vez de negar acesso.
+- Se `RESEND_API_KEY` não estiver definida, os emails de verificação/reposição ficam só registados na consola (`console.log`) em vez de enviados a sério — comportamento pensado para desenvolvimento, não usar em produção sem a definir.
+- `EMAIL_FROM` por omissão é `Carrinho de Compras <onboarding@resend.dev>` (domínio de teste do Resend, só entrega ao email da conta Resend) — em produção convém trocar para um endereço do domínio próprio (`noreply@carrinhodecompras.pt`), depois de verificar o domínio no Resend com os registos DNS que eles pedem.
+- `FRONTEND_URL` por omissão é `http://localhost:5173` — usado para montar os links de verificação/reposição enviados por email (`{FRONTEND_URL}/verificar-email?token=...`); em produção tem de ser `https://carrinhodecompras.pt`.
 
 ## Backups
 

@@ -35,14 +35,19 @@ const api = $fetch.create({
 export const authApi = {
   login: (email: string, password: string) =>
     api<{ token: string; user: AuthUser }>('/auth/login', { method: 'POST', body: { email, password } }),
+  // Conta fica por confirmar até se clicar no link do email — sem login automático.
   register: (name: string, email: string, password: string) =>
-    api<{ token: string; user: AuthUser }>('/auth/register', {
-      method: 'POST',
-      body: { name, email, password },
-    }),
+    api<{ message: string }>('/auth/register', { method: 'POST', body: { name, email, password } }),
   me: () => api<AuthUser>('/auth/me'),
   updateMe: (data: { name?: string; email?: string; currentPassword?: string; newPassword?: string }) =>
     api<AuthUser>('/auth/me', { method: 'PATCH', body: data }),
+  verifyEmail: (token: string) => api<{ message: string }>('/auth/verify-email', { method: 'POST', body: { token } }),
+  resendVerification: (email: string) =>
+    api<{ message: string }>('/auth/resend-verification', { method: 'POST', body: { email } }),
+  forgotPassword: (email: string) =>
+    api<{ message: string }>('/auth/forgot-password', { method: 'POST', body: { email } }),
+  resetPassword: (token: string, newPassword: string) =>
+    api<{ message: string }>('/auth/reset-password', { method: 'POST', body: { token, newPassword } }),
 }
 
 // Produtos
