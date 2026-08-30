@@ -4,10 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { pricesApi, productsApi, supermarketsApi } from '@/api'
 import type { PriceRecord, Product, Supermarket } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
-import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
+import {
+  useAsyncAction,
+  ASYNC_ACTION_FAILED,
+} from '@/composables/useAsyncAction'
 
 const prices = ref<PriceRecord[]>([])
-const products = ref<Product[]>([])
 const supermarkets = ref<Supermarket[]>([])
 const total = ref(0)
 const page = ref(0)
@@ -19,6 +21,9 @@ const {
 } = useAsyncAction('Erro ao carregar preços', { immediate: true })
 
 const filterProduct = ref<number | ''>('')
+const filterProductQuery = ref('')
+const filterProductResults = ref<Product[]>([])
+let filterProductDebounce: ReturnType<typeof setTimeout> | undefined
 const filterSupermarket = ref<number | ''>('')
 
 const showModal = ref(false)
@@ -42,7 +47,6 @@ const router = useRouter()
 
 const today = new Date().toISOString().substring(0, 10)
 const form = ref({
-  productId: '' as number | '',
   variantId: '' as number | '',
   supermarketId: '' as number | '',
   price: '' as number | '',
@@ -51,12 +55,12 @@ const form = ref({
   notes: '',
 })
 
-// Variantes do produto selecionado no formulário — os produtos já vêm com as
-// variantes incluídas (productsApi.getAll), não é preciso um pedido extra.
-const formVariants = computed(
-  () =>
-    products.value.find((p) => p.id === form.value.productId)?.variants ?? []
-)
+const formProductQuery = ref('')
+const formProductResults = ref<Product[]>([])
+const formProductObj = ref<Product | null>(null)
+let formProductDebounce: ReturnType<typeof setTimeout> | undefined
+
+const formVariants = computed(() => formProductObj.value?.variants ?? [])
 
 const totalPages = computed(() => Math.ceil(total.value / PAGE_SIZE))
 
@@ -92,9 +96,51 @@ async function loadPrices() {
   }
 }
 
+function searchFilterProducts() {
+  clearTimeout(filterProductDebounce)
+  filterProductDebounce = setTimeout(async () => {
+    const query = filterProductQuery.value.trim()
+    if (!query) {
+      filterProductResults.value = []
+      if (filterProduct.value !== '') {
+        filterProduct.value = ''
+        applyFilters()
+      }
+      return
+    }
+    filterProductResults.value = await productsApi.getAll({ search: query })
+  }, 300)
+}
+
+function selectFilterProduct(product: Product) {
+  filterProduct.value = product.id
+  filterProductQuery.value = product.name
+  filterProductResults.value = []
+  applyFilters()
+}
+
+function searchFormProducts() {
+  clearTimeout(formProductDebounce)
+  formProductDebounce = setTimeout(async () => {
+    const query = formProductQuery.value.trim()
+    if (!query) {
+      formProductResults.value = []
+      return
+    }
+    formProductResults.value = await productsApi.getAll({ search: query })
+  }, 300)
+}
+
+function selectFormProduct(product: Product) {
+  formProductObj.value = product
+  formProductQuery.value = product.name
+  formProductResults.value = []
+  // muda o produto genérico — a variante anterior já não é válida
+  form.value.variantId = ''
+}
+
 onMounted(async () => {
   await Promise.all([
-    productsApi.getAll().then((p) => (products.value = p)),
     supermarketsApi.getAll().then((s) => (supermarkets.value = s)),
     loadPrices(),
   ])
@@ -102,7 +148,7 @@ onMounted(async () => {
   if (route.params.id) {
     try {
       const price = await pricesApi.getById(Number(route.params.id))
-      openEdit(price)
+      await openEdit(price)
     } catch {
       router.replace({ name: 'prices' })
     }
@@ -112,7 +158,6 @@ onMounted(async () => {
 function openCreate() {
   editingPrice.value = null
   form.value = {
-    productId: '',
     variantId: '',
     supermarketId: '',
     price: '',
@@ -120,14 +165,16 @@ function openCreate() {
     date: today,
     notes: '',
   }
+  formProductQuery.value = ''
+  formProductObj.value = null
+  formProductResults.value = []
   formError.value = ''
   showModal.value = true
 }
 
-function openEdit(price: PriceRecord) {
+async function openEdit(price: PriceRecord) {
   editingPrice.value = price
   form.value = {
-    productId: price.variant?.product?.id ?? '',
     variantId: price.variantId,
     supermarketId: price.supermarketId,
     price: price.price,
@@ -135,13 +182,16 @@ function openEdit(price: PriceRecord) {
     date: price.date.substring(0, 10),
     notes: price.notes ?? '',
   }
+  formProductResults.value = []
+  formProductQuery.value = price.variant?.product?.name ?? ''
+  formProductObj.value = null
   formError.value = ''
   showModal.value = true
-}
 
-function onProductChange() {
-  // muda o produto genérico — a variante anterior já não é válida
-  form.value.variantId = ''
+  const productId = price.variant?.product?.id
+  if (productId) {
+    formProductObj.value = await productsApi.getById(productId)
+  }
 }
 
 async function save() {
@@ -244,16 +294,28 @@ function formatDate(date: string) {
 
     <!-- Filters -->
     <div class="flex flex-col sm:flex-row gap-3 mb-6">
-      <select
-        v-model="filterProduct"
-        class="input max-w-xs"
-        @change="applyFilters"
-      >
-        <option value="">Todos os produtos</option>
-        <option v-for="p in products" :key="p.id" :value="p.id">
-          {{ p.name }}
-        </option>
-      </select>
+      <div class="relative w-full sm:max-w-xs">
+        <input
+          v-model="filterProductQuery"
+          type="text"
+          class="input"
+          placeholder="Todos os produtos"
+          @input="searchFilterProducts"
+        />
+        <ul
+          v-if="filterProductResults.length > 0"
+          class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+        >
+          <li
+            v-for="p in filterProductResults"
+            :key="p.id"
+            class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
+            @click="selectFilterProduct(p)"
+          >
+            {{ p.name }}
+          </li>
+        </ul>
+      </div>
       <select
         v-model="filterSupermarket"
         class="input max-w-xs"
@@ -402,25 +464,35 @@ function formatDate(date: string) {
       @submit="save"
     >
       <div class="space-y-4">
-        <div>
+        <div class="relative">
           <label class="label">Produto *</label>
-          <select
-            v-model="form.productId"
+          <input
+            v-model="formProductQuery"
+            type="text"
             class="input"
-            @change="onProductChange"
+            placeholder="Pesquisar produto…"
+            @input="searchFormProducts"
+          />
+          <ul
+            v-if="formProductResults.length > 0"
+            class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
           >
-            <option value="">Selecionar produto…</option>
-            <option v-for="p in products" :key="p.id" :value="p.id">
+            <li
+              v-for="p in formProductResults"
+              :key="p.id"
+              class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
+              @click="selectFormProduct(p)"
+            >
               {{ p.name }}
-            </option>
-          </select>
+            </li>
+          </ul>
         </div>
         <div>
           <label class="label">Variante (marca) *</label>
           <select
             v-model="form.variantId"
             class="input"
-            :disabled="!form.productId"
+            :disabled="!formProductObj"
           >
             <option value="">Selecionar variante…</option>
             <option v-for="v in formVariants" :key="v.id" :value="v.id">
