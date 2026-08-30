@@ -21,7 +21,7 @@ describe('DashboardView', () => {
     dashboardMock.mockReturnValue(new Promise(() => {})) // nunca resolve
     const wrapper = mount(DashboardView)
 
-    expect(wrapper.find('.animate-spin').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="loading-spinner"]').exists()).toBe(true)
   })
 
   it('mostra a mensagem de erro real quando falha ao carregar', async () => {
