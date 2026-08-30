@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { MailCheckIcon } from '@lucide/vue'
 import { authApi } from '@/api'
 import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Spinner } from '@/components/ui/spinner'
 
 const email = ref('')
 const sent = ref(false)
@@ -15,68 +22,54 @@ async function submit() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+  <div class="flex min-h-screen items-center justify-center bg-gray-50 p-4">
     <div class="w-full max-w-md">
-      <div class="text-center mb-8">
+      <div class="mb-8 text-center">
         <h1 class="text-2xl font-bold text-gray-900">Carrinho de Compras</h1>
       </div>
 
-      <div class="card p-8">
+      <Card class="p-8">
         <div v-if="sent" class="text-center">
-          <div class="inline-flex items-center justify-center w-12 h-12 bg-brand-50 rounded-full mb-4">
-            <svg class="w-6 h-6 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
-            </svg>
+          <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
+            <MailCheckIcon class="size-6 text-brand-600" />
           </div>
-          <h2 class="text-lg font-semibold text-gray-900 mb-2">Verifica o teu email</h2>
+          <h2 class="mb-2 text-lg font-semibold text-gray-900">Verifica o teu email</h2>
           <p class="text-sm text-gray-500">
             Se existir uma conta com o email <b class="text-gray-700">{{ email }}</b
             >, enviámos um link para repores a password.
           </p>
-          <RouterLink to="/login" class="block text-sm text-brand-600 hover:underline mt-6">
+          <RouterLink to="/login" class="mt-6 block text-sm text-brand-600 hover:underline">
             Voltar ao login
           </RouterLink>
         </div>
 
         <template v-else>
-          <h2 class="text-lg font-semibold text-gray-900 mb-2">Recuperar password</h2>
-          <p class="text-sm text-gray-500 mb-6">
+          <h2 class="mb-2 text-lg font-semibold text-gray-900">Recuperar password</h2>
+          <p class="mb-6 text-sm text-gray-500">
             Indica o email da tua conta — enviamos-te um link para definires uma password nova.
           </p>
 
           <form class="space-y-4" @submit.prevent="submit">
-            <div>
-              <label class="label">Email</label>
-              <input
-                v-model="email"
-                type="email"
-                class="input"
-                placeholder="email@exemplo.com"
-                autocomplete="email"
-              />
+            <div class="space-y-1.5">
+              <Label>Email</Label>
+              <Input v-model="email" type="email" placeholder="email@exemplo.com" autocomplete="email" />
             </div>
 
-            <p v-if="error" class="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{{ error }}</p>
+            <Alert v-if="error" variant="destructive">
+              <AlertDescription>{{ error }}</AlertDescription>
+            </Alert>
 
-            <button type="submit" class="btn-primary w-full justify-center py-2.5" :disabled="loading || !email">
-              <svg v-if="loading" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-              </svg>
+            <Button type="submit" class="w-full" :disabled="loading || !email">
+              <Spinner v-if="loading" class="size-4" />
               {{ loading ? 'A enviar…' : 'Enviar link de recuperação' }}
-            </button>
+            </Button>
           </form>
 
-          <RouterLink to="/login" class="block text-center text-sm text-brand-600 hover:underline mt-6">
+          <RouterLink to="/login" class="mt-6 block text-center text-sm text-brand-600 hover:underline">
             Voltar ao login
           </RouterLink>
         </template>
-      </div>
+      </Card>
     </div>
   </div>
 </template>

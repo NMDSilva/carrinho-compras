@@ -46,7 +46,7 @@ describe('LoginView', () => {
   it('alterna para o modo de registo', async () => {
     const router = await setupRouter()
     const wrapper = mount(LoginView, { global: { plugins: [router] } })
-    await wrapper.find('button.text-brand-600').trigger('click')
+    await wrapper.find('[data-testid="switch-mode"]').trigger('click')
     expect(wrapper.text()).toContain('Criar conta')
     expect(wrapper.find('input[type="text"]').exists()).toBe(true)
   })
@@ -70,7 +70,7 @@ describe('LoginView', () => {
     const router = await setupRouter()
     const wrapper = mount(LoginView, { global: { plugins: [router] } })
 
-    await wrapper.find('button.text-brand-600').trigger('click') // muda para "Registar"
+    await wrapper.find('[data-testid="switch-mode"]').trigger('click') // muda para "Registar"
     await wrapper.find('input[type="text"]').setValue('Ana')
     await wrapper.find('input[type="email"]').setValue('ana@example.com')
     await wrapper.find('input[type="password"]').setValue('segredo123')

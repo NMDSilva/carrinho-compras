@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
+import { CheckIcon, XIcon } from '@lucide/vue'
 import { authApi } from '@/api'
 import { extractApiError } from '@/utils/errors'
 import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
 
 const route = useRoute()
 const { loading, error, run } = useAsyncAction('Link inválido ou expirado', { immediate: true })
@@ -39,64 +44,57 @@ async function resendVerification() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+  <div class="flex min-h-screen items-center justify-center bg-gray-50 p-4">
     <div class="w-full max-w-md">
-      <div class="text-center mb-8">
+      <div class="mb-8 text-center">
         <h1 class="text-2xl font-bold text-gray-900">Carrinho de Compras</h1>
       </div>
 
-      <div class="card p-8 text-center">
+      <Card class="p-8 text-center">
         <div v-if="loading" class="flex flex-col items-center gap-4 py-4">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+          <Spinner class="size-8 text-brand-600" />
           <p class="text-sm text-gray-500">A confirmar o teu email…</p>
         </div>
 
         <div v-else-if="verified">
-          <div class="inline-flex items-center justify-center w-12 h-12 bg-brand-50 rounded-full mb-4">
-            <svg class="w-6 h-6 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
+          <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
+            <CheckIcon class="size-6 text-brand-600" />
           </div>
-          <h2 class="text-lg font-semibold text-gray-900 mb-2">Email confirmado</h2>
-          <p class="text-sm text-gray-500 mb-6">Já podes entrar na tua conta.</p>
-          <RouterLink to="/login" class="btn-primary w-full justify-center py-2.5">Ir para o login</RouterLink>
+          <h2 class="mb-2 text-lg font-semibold text-gray-900">Email confirmado</h2>
+          <p class="mb-6 text-sm text-gray-500">Já podes entrar na tua conta.</p>
+          <Button as-child class="w-full">
+            <RouterLink to="/login">Ir para o login</RouterLink>
+          </Button>
         </div>
 
         <div v-else>
-          <div class="inline-flex items-center justify-center w-12 h-12 bg-red-50 rounded-full mb-4">
-            <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+            <XIcon class="size-6 text-red-500" />
           </div>
-          <h2 class="text-lg font-semibold text-gray-900 mb-2">{{ error }}</h2>
-          <p class="text-sm text-gray-500 mb-4">Podes pedir um novo link de confirmação.</p>
+          <h2 class="mb-2 text-lg font-semibold text-gray-900">{{ error }}</h2>
+          <p class="mb-4 text-sm text-gray-500">Podes pedir um novo link de confirmação.</p>
 
           <div class="space-y-3 text-left">
-            <input
-              v-model="resendEmail"
-              type="email"
-              class="input"
-              placeholder="email@exemplo.com"
-              autocomplete="email"
-            />
-            <button
+            <Input v-model="resendEmail" type="email" placeholder="email@exemplo.com" autocomplete="email" />
+            <Button
               type="button"
-              class="btn-primary w-full justify-center py-2.5"
+              class="w-full"
+              data-testid="resend-verification"
               :disabled="resending || !resendEmail"
               @click="resendVerification"
             >
               {{ resending ? 'A reenviar…' : 'Reenviar email de confirmação' }}
-            </button>
-            <p v-if="resendMessage" class="text-sm text-brand-700 bg-brand-50 rounded-lg px-3 py-2">
+            </Button>
+            <p v-if="resendMessage" class="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
               {{ resendMessage }}
             </p>
           </div>
 
-          <RouterLink to="/login" class="block text-sm text-brand-600 hover:underline mt-6">
+          <RouterLink to="/login" class="mt-6 block text-sm text-brand-600 hover:underline">
             Voltar ao login
           </RouterLink>
         </div>
-      </div>
+      </Card>
     </div>
   </div>
 </template>

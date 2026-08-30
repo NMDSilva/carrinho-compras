@@ -60,7 +60,7 @@ describe('VerifyEmailView', () => {
 
     resendVerificationMock.mockResolvedValueOnce({ message: 'Novo email enviado.' })
     await wrapper.find('input[type="email"]').setValue('ana@example.com')
-    await wrapper.find('button.btn-primary').trigger('click')
+    await wrapper.find('[data-testid="resend-verification"]').trigger('click')
     await flush()
     await wrapper.vm.$nextTick()
 
