@@ -8,6 +8,7 @@ import {
   useAsyncAction,
   ASYNC_ACTION_FAILED,
 } from '@/composables/useAsyncAction'
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
 
 const prices = ref<PriceRecord[]>([])
 const supermarkets = ref<Supermarket[]>([])
@@ -21,9 +22,14 @@ const {
 } = useAsyncAction('Erro ao carregar preços', { immediate: true })
 
 const filterProduct = ref<number | ''>('')
-const filterProductQuery = ref('')
-const filterProductResults = ref<Product[]>([])
-let filterProductDebounce: ReturnType<typeof setTimeout> | undefined
+const {
+  query: filterProductQuery,
+  results: filterProductResults,
+  loading: filterProductSearchLoading,
+  search: searchFilterProductsDebounced,
+} = useDebouncedSearch<Product>(
+  async (query) => (await productsApi.getAll({ search: query })).data
+)
 const filterSupermarket = ref<number | ''>('')
 
 const showModal = ref(false)
@@ -55,10 +61,16 @@ const form = ref({
   notes: '',
 })
 
-const formProductQuery = ref('')
-const formProductResults = ref<Product[]>([])
+const {
+  query: formProductQuery,
+  results: formProductResults,
+  loading: formProductSearchLoading,
+  search: searchFormProducts,
+  clear: clearFormProductSearch,
+} = useDebouncedSearch<Product>(
+  async (query) => (await productsApi.getAll({ search: query })).data
+)
 const formProductObj = ref<Product | null>(null)
-let formProductDebounce: ReturnType<typeof setTimeout> | undefined
 
 const formVariants = computed(() => formProductObj.value?.variants ?? [])
 
@@ -97,21 +109,11 @@ async function loadPrices() {
 }
 
 function searchFilterProducts() {
-  clearTimeout(filterProductDebounce)
-  filterProductDebounce = setTimeout(async () => {
-    const query = filterProductQuery.value.trim()
-    if (!query) {
-      filterProductResults.value = []
-      if (filterProduct.value !== '') {
-        filterProduct.value = ''
-        applyFilters()
-      }
-      return
-    }
-    filterProductResults.value = (
-      await productsApi.getAll({ search: query })
-    ).data
-  }, 300)
+  searchFilterProductsDebounced()
+  if (!filterProductQuery.value.trim() && filterProduct.value !== '') {
+    filterProduct.value = ''
+    applyFilters()
+  }
 }
 
 function selectFilterProduct(product: Product) {
@@ -119,20 +121,6 @@ function selectFilterProduct(product: Product) {
   filterProductQuery.value = product.name
   filterProductResults.value = []
   applyFilters()
-}
-
-function searchFormProducts() {
-  clearTimeout(formProductDebounce)
-  formProductDebounce = setTimeout(async () => {
-    const query = formProductQuery.value.trim()
-    if (!query) {
-      formProductResults.value = []
-      return
-    }
-    formProductResults.value = (
-      await productsApi.getAll({ search: query })
-    ).data
-  }, 300)
 }
 
 function selectFormProduct(product: Product) {
@@ -169,9 +157,8 @@ function openCreate() {
     date: today,
     notes: '',
   }
-  formProductQuery.value = ''
+  clearFormProductSearch()
   formProductObj.value = null
-  formProductResults.value = []
   formError.value = ''
   showModal.value = true
 }
@@ -299,13 +286,35 @@ function formatDate(date: string) {
     <!-- Filters -->
     <div class="flex flex-col sm:flex-row gap-3 mb-6">
       <div class="relative w-full sm:max-w-xs">
-        <input
-          v-model="filterProductQuery"
-          type="text"
-          class="input"
-          placeholder="Todos os produtos"
-          @input="searchFilterProducts"
-        />
+        <div class="relative">
+          <input
+            v-model="filterProductQuery"
+            type="text"
+            class="input pr-9"
+            placeholder="Todos os produtos"
+            @input="searchFilterProducts"
+          />
+          <svg
+            v-if="filterProductSearchLoading"
+            class="animate-spin w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+        </div>
         <ul
           v-if="filterProductResults.length > 0"
           class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
@@ -470,13 +479,35 @@ function formatDate(date: string) {
       <div class="space-y-4">
         <div class="relative">
           <label class="label">Produto *</label>
-          <input
-            v-model="formProductQuery"
-            type="text"
-            class="input"
-            placeholder="Pesquisar produto…"
-            @input="searchFormProducts"
-          />
+          <div class="relative">
+            <input
+              v-model="formProductQuery"
+              type="text"
+              class="input pr-9"
+              placeholder="Pesquisar produto…"
+              @input="searchFormProducts"
+            />
+            <svg
+              v-if="formProductSearchLoading"
+              class="animate-spin w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              />
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+          </div>
           <ul
             v-if="formProductResults.length > 0"
             class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"

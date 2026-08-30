@@ -15,8 +15,11 @@ const {
 } = useAsyncAction('Erro ao carregar produtos por rever', { immediate: true })
 
 // Pesquisa de produto destino, por linha (chave = id do produto placeholder)
+// — cada linha tem o seu próprio debounce/loading, para a pesquisa numa
+// linha não cancelar a pesquisa pendente de outra.
 const reassignQuery = ref<Record<number, string>>({})
 const reassignResults = ref<Record<number, Product[]>>({})
+const reassignLoading = ref<Record<number, boolean>>({})
 const reassignTarget = ref<Record<number, Product | null>>({})
 const { error: reassignError, run: runReassign } = useAsyncAction(
   'Erro ao reatribuir variante'
@@ -25,7 +28,8 @@ const { error: reviewError, run: runMarkReviewed } = useAsyncAction(
   'Erro ao marcar como revisto'
 )
 
-let searchDebounce: ReturnType<typeof setTimeout> | undefined
+const searchDebounces: Record<number, ReturnType<typeof setTimeout>> = {}
+const searchRequestIds: Record<number, number> = {}
 
 async function loadProducts() {
   const result = await runLoad(() => productsApi.getAll({ needsReview: true }))
@@ -35,18 +39,29 @@ async function loadProducts() {
 onMounted(loadProducts)
 
 function searchTarget(productId: number) {
-  clearTimeout(searchDebounce)
-  searchDebounce = setTimeout(async () => {
-    const query = reassignQuery.value[productId]?.trim()
-    if (!query) {
-      reassignResults.value = { ...reassignResults.value, [productId]: [] }
-      return
-    }
-    const { data } = await productsApi.getAll({ search: query })
-    // não faz sentido reatribuir um placeholder para si próprio
-    reassignResults.value = {
-      ...reassignResults.value,
-      [productId]: data.filter((p) => p.id !== productId),
+  clearTimeout(searchDebounces[productId])
+  const query = reassignQuery.value[productId]?.trim()
+  if (!query) {
+    reassignResults.value = { ...reassignResults.value, [productId]: [] }
+    reassignLoading.value = { ...reassignLoading.value, [productId]: false }
+    return
+  }
+  searchDebounces[productId] = setTimeout(async () => {
+    const requestId = (searchRequestIds[productId] ?? 0) + 1
+    searchRequestIds[productId] = requestId
+    reassignLoading.value = { ...reassignLoading.value, [productId]: true }
+    try {
+      const { data } = await productsApi.getAll({ search: query })
+      if (searchRequestIds[productId] !== requestId) return
+      // não faz sentido reatribuir um placeholder para si próprio
+      reassignResults.value = {
+        ...reassignResults.value,
+        [productId]: data.filter((p) => p.id !== productId),
+      }
+    } finally {
+      if (searchRequestIds[productId] === requestId) {
+        reassignLoading.value = { ...reassignLoading.value, [productId]: false }
+      }
     }
   }, 300)
 }
@@ -143,13 +158,35 @@ function formatVariant(product: Product) {
               {{ formatVariant(product) }}
             </td>
             <td class="px-6 py-4 relative">
-              <input
-                v-model="reassignQuery[product.id]"
-                type="text"
-                class="input"
-                placeholder="Pesquisar produto existente..."
-                @input="searchTarget(product.id)"
-              />
+              <div class="relative">
+                <input
+                  v-model="reassignQuery[product.id]"
+                  type="text"
+                  class="input pr-9"
+                  placeholder="Pesquisar produto existente..."
+                  @input="searchTarget(product.id)"
+                />
+                <svg
+                  v-if="reassignLoading[product.id]"
+                  class="animate-spin w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  />
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              </div>
               <ul
                 v-if="reassignResults[product.id]?.length"
                 class="absolute z-10 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"

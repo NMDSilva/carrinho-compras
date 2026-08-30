@@ -6,31 +6,25 @@ import {
   useAsyncAction,
   ASYNC_ACTION_FAILED,
 } from '@/composables/useAsyncAction'
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
 
 const supermarkets = ref<Supermarket[]>([])
-const productQuery = ref('')
-const productResults = ref<Product[]>([])
 const selectedProductObj = ref<Product | null>(null)
 const selectedVariant = ref<number | ''>('')
 const selectedSupermarkets = ref<number[]>([])
-let productSearchDebounce: ReturnType<typeof setTimeout> | undefined
+const {
+  query: productQuery,
+  results: productResults,
+  loading: productSearchLoading,
+  search: searchProducts,
+} = useDebouncedSearch<Product>(
+  async (query) => (await productsApi.getAll({ search: query })).data
+)
 
 // Variantes do produto selecionado — já vêm incluídas em productsApi.getAll().
 const variantsOfSelected = computed(
   () => selectedProductObj.value?.variants ?? []
 )
-
-function searchProducts() {
-  clearTimeout(productSearchDebounce)
-  productSearchDebounce = setTimeout(async () => {
-    const query = productQuery.value.trim()
-    if (!query) {
-      productResults.value = []
-      return
-    }
-    productResults.value = (await productsApi.getAll({ search: query })).data
-  }, 300)
-}
 
 function selectProduct(product: Product) {
   selectedProductObj.value = product
@@ -158,13 +152,35 @@ const BG_COLORS = [
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="relative">
           <label class="label">Produto</label>
-          <input
-            v-model="productQuery"
-            type="text"
-            class="input"
-            placeholder="Pesquisar produto…"
-            @input="searchProducts"
-          />
+          <div class="relative">
+            <input
+              v-model="productQuery"
+              type="text"
+              class="input pr-9"
+              placeholder="Pesquisar produto…"
+              @input="searchProducts"
+            />
+            <svg
+              v-if="productSearchLoading"
+              class="animate-spin w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              />
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+          </div>
           <ul
             v-if="productResults.length > 0"
             class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"

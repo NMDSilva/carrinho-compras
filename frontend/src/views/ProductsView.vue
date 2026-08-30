@@ -8,6 +8,7 @@ import {
   useAsyncAction,
   ASYNC_ACTION_FAILED,
 } from '@/composables/useAsyncAction'
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
 
 const products = ref<Product[]>([])
 const categories = ref<string[]>([])
@@ -80,15 +81,23 @@ const {
 // --- Mover variante para outro produto ---
 const showReassignModal = ref(false)
 const reassignSource = ref<ProductVariant | null>(null)
-const reassignQuery = ref('')
-const reassignResults = ref<Product[]>([])
+const {
+  query: reassignQuery,
+  results: reassignResults,
+  loading: reassignSearchLoading,
+  search: searchReassignTarget,
+  clear: clearReassignSearch,
+} = useDebouncedSearch<Product>(async (query) => {
+  const { data } = await productsApi.getAll({ search: query })
+  // não faz sentido mover a variante para o mesmo produto onde já está
+  return data.filter((p) => p.id !== reassignSource.value?.productId)
+})
 const reassignTarget = ref<Product | null>(null)
 const {
   loading: reassigning,
   error: reassignError,
   run: runReassign,
 } = useAsyncAction('Erro ao mover variante')
-let reassignDebounce: ReturnType<typeof setTimeout> | undefined
 
 const route = useRoute()
 const router = useRouter()
@@ -273,27 +282,10 @@ async function confirmDeleteVariant() {
 
 function openReassign(variant: ProductVariant) {
   reassignSource.value = variant
-  reassignQuery.value = ''
-  reassignResults.value = []
+  clearReassignSearch()
   reassignTarget.value = null
   reassignError.value = ''
   showReassignModal.value = true
-}
-
-function searchReassignTarget() {
-  clearTimeout(reassignDebounce)
-  reassignDebounce = setTimeout(async () => {
-    const query = reassignQuery.value.trim()
-    if (!query) {
-      reassignResults.value = []
-      return
-    }
-    const { data } = await productsApi.getAll({ search: query })
-    // não faz sentido mover a variante para o mesmo produto onde já está
-    reassignResults.value = data.filter(
-      (p) => p.id !== reassignSource.value?.productId
-    )
-  }, 300)
 }
 
 function selectReassignTarget(product: Product) {
@@ -710,13 +702,35 @@ async function confirmReassign() {
         </p>
         <div class="relative">
           <label class="label">Produto de destino</label>
-          <input
-            v-model="reassignQuery"
-            type="text"
-            class="input"
-            placeholder="Pesquisar produto de destino..."
-            @input="searchReassignTarget"
-          />
+          <div class="relative">
+            <input
+              v-model="reassignQuery"
+              type="text"
+              class="input pr-9"
+              placeholder="Pesquisar produto de destino..."
+              @input="searchReassignTarget"
+            />
+            <svg
+              v-if="reassignSearchLoading"
+              class="animate-spin w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              />
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+          </div>
           <ul
             v-if="reassignResults.length > 0"
             class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
