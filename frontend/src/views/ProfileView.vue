@@ -2,13 +2,21 @@
 import { ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { extractApiError } from '@/utils/errors'
+import { useToast } from '@/composables/useToast'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Spinner } from '@/components/ui/spinner'
 
 const auth = useAuthStore()
+const toast = useToast()
 
 // --- Secção de informação pessoal ---
 const infoForm = ref({ name: auth.user?.name ?? '', email: auth.user?.email ?? '' })
 const infoLoading = ref(false)
-const infoSuccess = ref(false)
 const infoError = ref('')
 
 watch(() => auth.user, (u) => {
@@ -17,12 +25,10 @@ watch(() => auth.user, (u) => {
 
 async function saveInfo() {
   infoLoading.value = true
-  infoSuccess.value = false
   infoError.value = ''
   try {
     await auth.updateMe({ name: infoForm.value.name, email: infoForm.value.email })
-    infoSuccess.value = true
-    setTimeout(() => { infoSuccess.value = false }, 3000)
+    toast.success('Informações guardadas com sucesso')
   } catch (e: unknown) {
     infoError.value = extractApiError(e, 'Erro ao guardar alterações')
   } finally {
@@ -33,7 +39,6 @@ async function saveInfo() {
 // --- Secção de password ---
 const pwForm = ref({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const pwLoading = ref(false)
-const pwSuccess = ref(false)
 const pwError = ref('')
 
 function validatePassword(): string {
@@ -49,15 +54,13 @@ async function savePassword() {
   if (pwError.value) return
 
   pwLoading.value = true
-  pwSuccess.value = false
   try {
     await auth.updateMe({
       currentPassword: pwForm.value.currentPassword,
       newPassword: pwForm.value.newPassword,
     })
-    pwSuccess.value = true
+    toast.success('Password alterada com sucesso')
     pwForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
-    setTimeout(() => { pwSuccess.value = false }, 3000)
   } catch (e: unknown) {
     pwError.value = extractApiError(e, 'Erro ao alterar password')
   } finally {
@@ -70,130 +73,110 @@ async function savePassword() {
   <div class="max-w-xl">
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-gray-900">O meu perfil</h1>
-      <p class="text-sm text-gray-500 mt-1">Gere as tuas informações de conta</p>
+      <p class="mt-1 text-sm text-gray-500">Gere as tuas informações de conta</p>
     </div>
 
     <!-- Avatar + nome atual -->
-    <div class="flex items-center gap-4 mb-8 p-4 bg-white rounded-xl border border-gray-200">
-      <div class="w-14 h-14 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
-        <span class="text-brand-700 font-bold text-xl">{{ auth.user?.name.charAt(0).toUpperCase() }}</span>
+    <Card class="mb-8 flex-row items-center gap-4 p-4">
+      <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-brand-100">
+        <span class="text-xl font-bold text-brand-700">{{ auth.user?.name.charAt(0).toUpperCase() }}</span>
       </div>
       <div>
         <p class="font-semibold text-gray-900">{{ auth.user?.name }}</p>
         <p class="text-sm text-gray-500">{{ auth.user?.email }}</p>
-        <span
-          :class="auth.isAdmin
-            ? 'bg-brand-50 text-brand-700 border-brand-200'
-            : 'bg-gray-100 text-gray-600 border-gray-200'"
-          class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium border"
+        <Badge
+          variant="outline"
+          class="mt-1"
+          :class="
+            auth.isAdmin
+              ? 'border-brand-200 bg-brand-50 text-brand-700'
+              : 'border-gray-200 bg-gray-100 text-gray-600'
+          "
         >
           {{ auth.isAdmin ? 'Administrador' : 'Utilizador' }}
-        </span>
+        </Badge>
       </div>
-    </div>
+    </Card>
 
     <!-- Informação pessoal -->
-    <section class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-      <h2 class="text-base font-semibold text-gray-900 mb-4">Informação pessoal</h2>
+    <Card class="mb-6 p-6">
+      <h2 class="mb-4 text-base font-semibold text-gray-900">Informação pessoal</h2>
 
       <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-          <input
-            v-model="infoForm.name"
-            type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-          />
+        <div class="space-y-1.5">
+          <Label>Nome</Label>
+          <Input v-model="infoForm.name" type="text" />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input
-            v-model="infoForm.email"
-            type="email"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-          />
+        <div class="space-y-1.5">
+          <Label>Email</Label>
+          <Input v-model="infoForm.email" type="email" />
         </div>
       </div>
 
-      <div v-if="infoError" class="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
-        {{ infoError }}
-      </div>
-      <div v-if="infoSuccess" class="mt-4 bg-green-50 border border-green-200 rounded-lg p-3 text-green-700 text-sm">
-        Informações guardadas com sucesso
-      </div>
+      <Alert v-if="infoError" variant="destructive" class="mt-4">
+        <AlertDescription>{{ infoError }}</AlertDescription>
+      </Alert>
 
       <div class="mt-6 flex justify-end">
-        <button
-          @click="saveInfo"
-          :disabled="infoLoading"
-          class="px-4 py-2 text-sm font-medium bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 transition-colors"
-        >
+        <Button :disabled="infoLoading" @click="saveInfo">
+          <Spinner v-if="infoLoading" class="size-4" />
           {{ infoLoading ? 'A guardar...' : 'Guardar alterações' }}
-        </button>
+        </Button>
       </div>
-    </section>
+    </Card>
 
     <!-- Alterar password -->
-    <section class="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 class="text-base font-semibold text-gray-900 mb-4">Alterar password</h2>
+    <Card class="p-6">
+      <h2 class="mb-4 text-base font-semibold text-gray-900">Alterar password</h2>
 
       <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Password atual</label>
-          <input
+        <div class="space-y-1.5">
+          <Label>Password atual</Label>
+          <Input
             v-model="pwForm.currentPassword"
             type="password"
             autocomplete="current-password"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             placeholder="••••••••"
           />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Nova password</label>
-          <input
+        <div class="space-y-1.5">
+          <Label>Nova password</Label>
+          <Input
             v-model="pwForm.newPassword"
             type="password"
             autocomplete="new-password"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             placeholder="••••••••"
           />
-          <p class="text-xs text-gray-400 mt-1">Mínimo 6 caracteres</p>
+          <p class="text-xs text-gray-400">Mínimo 6 caracteres</p>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar nova password</label>
-          <input
+        <div class="space-y-1.5">
+          <Label>Confirmar nova password</Label>
+          <Input
             v-model="pwForm.confirmPassword"
             type="password"
             autocomplete="new-password"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-            :class="pwForm.confirmPassword && pwForm.confirmPassword !== pwForm.newPassword ? 'border-red-400' : ''"
             placeholder="••••••••"
+            :class="pwForm.confirmPassword && pwForm.confirmPassword !== pwForm.newPassword ? 'border-red-400' : ''"
           />
           <p
             v-if="pwForm.confirmPassword && pwForm.confirmPassword !== pwForm.newPassword"
-            class="text-xs text-red-500 mt-1"
+            class="text-xs text-red-500"
           >
             As passwords não coincidem
           </p>
         </div>
       </div>
 
-      <div v-if="pwError" class="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
-        {{ pwError }}
-      </div>
-      <div v-if="pwSuccess" class="mt-4 bg-green-50 border border-green-200 rounded-lg p-3 text-green-700 text-sm">
-        Password alterada com sucesso
-      </div>
+      <Alert v-if="pwError" variant="destructive" class="mt-4">
+        <AlertDescription>{{ pwError }}</AlertDescription>
+      </Alert>
 
       <div class="mt-6 flex justify-end">
-        <button
-          @click="savePassword"
-          :disabled="pwLoading"
-          class="px-4 py-2 text-sm font-medium bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 transition-colors"
-        >
+        <Button :disabled="pwLoading" @click="savePassword">
+          <Spinner v-if="pwLoading" class="size-4" />
           {{ pwLoading ? 'A alterar...' : 'Alterar password' }}
-        </button>
+        </Button>
       </div>
-    </section>
+    </Card>
   </div>
 </template>

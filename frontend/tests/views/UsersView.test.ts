@@ -48,7 +48,7 @@ describe('UsersView', () => {
     await flush()
     await wrapper.vm.$nextTick()
 
-    await wrapper.find('button[title="Eliminar"]').trigger('click')
+    await wrapper.find('[data-testid="delete-user"]').trigger('click')
     await wrapper.vm.$nextTick()
     // O ConfirmDialog (shadcn-vue) renderiza via <Teleport> para o <body>.
     await flushTeleport()
