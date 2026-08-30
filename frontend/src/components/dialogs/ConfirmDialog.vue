@@ -1,20 +1,32 @@
 <script setup lang="ts">
-import BaseDialog from './BaseDialog.vue'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 
-withDefaults(defineProps<{
-  modelValue: boolean
-  title: string
-  message: string
-  confirmLabel?: string
-  cancelLabel?: string
-  danger?: boolean
-  loading?: boolean
-}>(), {
-  confirmLabel: 'Confirmar',
-  cancelLabel: 'Cancelar',
-  danger: false,
-  loading: false,
-})
+withDefaults(
+  defineProps<{
+    modelValue: boolean
+    title: string
+    message: string
+    confirmLabel?: string
+    cancelLabel?: string
+    danger?: boolean
+    loading?: boolean
+  }>(),
+  {
+    confirmLabel: 'Confirmar',
+    cancelLabel: 'Cancelar',
+    danger: false,
+    loading: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
@@ -33,35 +45,41 @@ function confirm() {
 </script>
 
 <template>
-  <BaseDialog
-    :model-value="modelValue"
-    :title="title"
-    size="sm"
-    @update:model-value="emit('update:modelValue', $event)"
+  <AlertDialog
+    :open="modelValue"
+    @update:open="emit('update:modelValue', $event)"
   >
-    <p class="text-sm text-gray-600 leading-relaxed">{{ message }}</p>
+    <AlertDialogContent size="sm">
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ title }}</AlertDialogTitle>
+        <AlertDialogDescription>{{ message }}</AlertDialogDescription>
+      </AlertDialogHeader>
 
-    <template #footer>
-      <button type="button" class="btn btn-secondary" :disabled="loading" @click="cancel">
-        {{ cancelLabel }}
-      </button>
-      <button
-        type="button"
-        :class="danger ? 'btn btn-danger' : 'btn btn-primary'"
-        :disabled="loading"
-        @click="confirm"
-      >
-        <svg
-          v-if="loading"
-          class="animate-spin w-4 h-4"
-          fill="none"
-          viewBox="0 0 24 24"
+      <AlertDialogFooter>
+        <!-- Botões simples (não AlertDialogAction/Cancel): estes fecham o
+             dialog automaticamente ao clicar, o que quebraria o padrão de
+             loading/erro assíncrono — quem decide fechar é sempre o v-model
+             controlado pela view chamadora. -->
+        <Button
+          type="button"
+          variant="outline"
+          data-testid="dialog-cancel"
+          :disabled="loading"
+          @click="cancel"
         >
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-        {{ confirmLabel }}
-      </button>
-    </template>
-  </BaseDialog>
+          {{ cancelLabel }}
+        </Button>
+        <Button
+          type="button"
+          :variant="danger ? 'destructive' : 'default'"
+          data-testid="dialog-confirm"
+          :disabled="loading"
+          @click="confirm"
+        >
+          <Spinner v-if="loading" class="size-4" />
+          {{ confirmLabel }}
+        </Button>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>

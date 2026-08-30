@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import BaseDialog from './BaseDialog.vue'
+import { Button } from '@/components/ui/button'
 
-withDefaults(defineProps<{
-  modelValue: boolean
-  title: string
-  message: string
-  closeLabel?: string
-}>(), {
-  closeLabel: 'Fechar',
-})
+withDefaults(
+  defineProps<{
+    modelValue: boolean
+    title: string
+    message: string
+    closeLabel?: string
+  }>(),
+  {
+    closeLabel: 'Fechar',
+  },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
@@ -26,12 +30,12 @@ function close() {
     size="sm"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <p class="text-sm text-gray-600 leading-relaxed">{{ message }}</p>
+    <p class="text-sm leading-relaxed text-gray-600">{{ message }}</p>
 
     <template #footer>
-      <button type="button" class="btn btn-secondary" @click="close">
+      <Button type="button" variant="outline" @click="close">
         {{ closeLabel }}
-      </button>
+      </Button>
     </template>
   </BaseDialog>
 </template>

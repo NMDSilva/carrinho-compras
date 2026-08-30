@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, DOMWrapper } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import ProductsView from '@/views/ProductsView.vue'
+import { flushTeleport } from '../helpers/teleport'
+
+const body = new DOMWrapper(document.body)
 
 const { getAllMock, getByIdMock, getCategoriesMock, deleteMock, reassignMock } =
   vi.hoisted(() => ({
@@ -96,8 +99,9 @@ describe('ProductsView', () => {
 
     await wrapper.find('button.btn-danger').trigger('click')
     await wrapper.vm.$nextTick()
-    const dangerButtons = wrapper.findAll('button.btn-danger')
-    await dangerButtons[1].trigger('click')
+    // O ConfirmDialog (shadcn-vue) renderiza via <Teleport> para o <body>.
+    await flushTeleport()
+    await body.find('[data-testid="dialog-confirm"]').trigger('click')
     await new Promise((r) => setTimeout(r, 0))
     await wrapper.vm.$nextTick()
 
@@ -121,10 +125,9 @@ describe('ProductsView', () => {
 
     await wrapper.find('button.btn-danger').trigger('click')
     await wrapper.vm.$nextTick()
-    // índice 0 = eliminar da linha, índice 1 = confirmar no dialog de produto
-    // (índice 2 seria o dialog de eliminar variante, mais abaixo na página)
-    const dangerButtons = wrapper.findAll('button.btn-danger')
-    await dangerButtons[1].trigger('click')
+    // O ConfirmDialog (shadcn-vue) renderiza via <Teleport> para o <body>.
+    await flushTeleport()
+    await body.find('[data-testid="dialog-confirm"]').trigger('click')
     await new Promise((r) => setTimeout(r, 0))
     await wrapper.vm.$nextTick()
 
@@ -139,12 +142,14 @@ describe('ProductsView', () => {
 
     await new Promise((r) => setTimeout(r, 0))
     await wrapper.vm.$nextTick()
+    // O FormDialog (shadcn-vue) renderiza via <Teleport> para o <body>.
+    await flushTeleport()
 
     expect(getByIdMock).toHaveBeenCalledWith(1)
-    expect(wrapper.text()).toContain('Editar Produto')
+    expect(body.text()).toContain('Editar Produto')
     expect(
       (
-        wrapper.find('input[placeholder="ex: Açúcar branco"]')
+        body.find('input[placeholder="ex: Açúcar branco"]')
           .element as HTMLInputElement
       ).value
     ).toBe('Leite meio gordo')
@@ -240,23 +245,24 @@ describe('ProductsView', () => {
     expect(moveButton).toBeTruthy()
     await moveButton!.trigger('click')
     await wrapper.vm.$nextTick()
+    // O FormDialog "mover" (shadcn-vue) renderiza via <Teleport> para o
+    // <body> — é o único aberto neste ponto do teste (os dialogs de
+    // criar/editar produto e variante não chegam a ser abertos aqui).
+    await flushTeleport()
 
-    expect(wrapper.text()).toContain('Mover variante para outro produto')
+    expect(body.text()).toContain('Mover variante para outro produto')
 
-    await wrapper
+    await body
       .find('input[placeholder="Pesquisar produto de destino..."]')
       .setValue('Polpa')
     await new Promise((r) => setTimeout(r, 320)) // aguarda o debounce de 300ms
     await wrapper.vm.$nextTick()
 
-    await wrapper.find('li').trigger('click')
+    await body.find('li').trigger('click')
     await wrapper.vm.$nextTick()
-    expect(wrapper.text()).toContain('Destino selecionado: Polpa de Tomate')
+    expect(body.text()).toContain('Destino selecionado: Polpa de Tomate')
 
-    // 3 diálogos com <form> na página (produto, variante, mover) — o de
-    // "mover" é o último a ser declarado no template.
-    const forms = wrapper.findAll('form')
-    await forms[forms.length - 1].trigger('submit')
+    await body.find('form').trigger('submit')
     await new Promise((r) => setTimeout(r, 0))
     await wrapper.vm.$nextTick()
 

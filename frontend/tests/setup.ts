@@ -1,4 +1,4 @@
-import { beforeEach } from 'vitest'
+import { beforeEach, afterEach } from 'vitest'
 
 // Node 20+ expõe um localStorage global experimental que tem precedência
 // sobre o do jsdom; forçamos a usar o do jsdom em vez desse.
@@ -7,16 +7,13 @@ Object.defineProperty(globalThis, 'localStorage', {
   configurable: true,
 })
 
-// jsdom não implementa <dialog>.showModal()/close()
-if (typeof HTMLDialogElement !== 'undefined') {
-  HTMLDialogElement.prototype.showModal = function () {
-    this.setAttribute('open', '')
-  }
-  HTMLDialogElement.prototype.close = function () {
-    this.removeAttribute('open')
-  }
-}
-
 beforeEach(() => {
   localStorage.clear()
+})
+
+// Dialog/AlertDialog do shadcn-vue (reka-ui) montam com attachTo: document.body
+// (renderizam via <Teleport to="body">) — limpar entre testes para não
+// deixar diálogos de um teste a interferir com o find() do teste seguinte.
+afterEach(() => {
+  document.body.innerHTML = ''
 })

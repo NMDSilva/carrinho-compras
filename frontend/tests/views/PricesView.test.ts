@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, DOMWrapper } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import PricesView from '@/views/PricesView.vue'
+import { flushTeleport } from '../helpers/teleport'
+
+const body = new DOMWrapper(document.body)
 
 const { getAllMock, getByIdMock, deleteMock } = vi.hoisted(() => ({
   getAllMock: vi.fn(),
@@ -90,8 +93,9 @@ describe('PricesView', () => {
 
     await wrapper.find('button.btn-danger').trigger('click')
     await wrapper.vm.$nextTick()
-    const buttons = wrapper.findAll('button')
-    await buttons[buttons.length - 1].trigger('click')
+    // O ConfirmDialog (shadcn-vue) renderiza via <Teleport> para o <body>.
+    await flushTeleport()
+    await body.find('[data-testid="dialog-confirm"]').trigger('click')
     await flush()
     await wrapper.vm.$nextTick()
 

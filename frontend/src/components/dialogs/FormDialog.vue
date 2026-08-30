@@ -1,24 +1,29 @@
 <script setup lang="ts">
 import { useId } from 'vue'
 import BaseDialog from './BaseDialog.vue'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 
 const formId = useId()
 
-withDefaults(defineProps<{
-  modelValue: boolean
-  title: string
-  submitLabel?: string
-  cancelLabel?: string
-  loading?: boolean
-  error?: string
-  size?: 'sm' | 'md' | 'lg'
-}>(), {
-  submitLabel: 'Guardar',
-  cancelLabel: 'Cancelar',
-  loading: false,
-  error: '',
-  size: 'md',
-})
+withDefaults(
+  defineProps<{
+    modelValue: boolean
+    title: string
+    submitLabel?: string
+    cancelLabel?: string
+    loading?: boolean
+    error?: string
+    size?: 'sm' | 'md' | 'lg'
+  }>(),
+  {
+    submitLabel: 'Guardar',
+    cancelLabel: 'Cancelar',
+    loading: false,
+    error: '',
+    size: 'md',
+  },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
@@ -53,33 +58,31 @@ function submit() {
       <!-- Erro acima do footer, dentro do body -->
       <div
         v-if="error"
-        class="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700"
+        class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
       >
         {{ error }}
       </div>
     </form>
 
     <template #footer>
-      <button type="button" class="btn btn-secondary" :disabled="loading" @click="cancel">
+      <Button
+        type="button"
+        variant="outline"
+        data-testid="dialog-cancel"
+        :disabled="loading"
+        @click="cancel"
+      >
         {{ cancelLabel }}
-      </button>
-      <button
+      </Button>
+      <Button
         type="submit"
         :form="formId"
-        class="btn btn-primary"
+        data-testid="dialog-confirm"
         :disabled="loading"
       >
-        <svg
-          v-if="loading"
-          class="animate-spin w-4 h-4"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
+        <Spinner v-if="loading" class="size-4" />
         {{ submitLabel }}
-      </button>
+      </Button>
     </template>
   </BaseDialog>
 </template>
