@@ -91,7 +91,7 @@ describe('PricesView', () => {
     await flush()
     await wrapper.vm.$nextTick()
 
-    await wrapper.find('button.btn-danger').trigger('click')
+    await wrapper.find('[data-testid="delete-price"]').trigger('click')
     await wrapper.vm.$nextTick()
     // O ConfirmDialog (shadcn-vue) renderiza via <Teleport> para o <body>.
     await flushTeleport()

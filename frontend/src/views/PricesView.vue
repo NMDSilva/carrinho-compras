@@ -1,14 +1,31 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { PlusIcon, XIcon } from '@lucide/vue'
 import { pricesApi, productsApi, supermarketsApi } from '@/api'
 import type { PriceRecord, Product, Supermarket } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
+import ProductCombobox from '@/components/ProductCombobox.vue'
+import PaginationControls from '@/components/PaginationControls.vue'
 import {
   useAsyncAction,
   ASYNC_ACTION_FAILED,
 } from '@/composables/useAsyncAction'
-import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Spinner } from '@/components/ui/spinner'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 const prices = ref<PriceRecord[]>([])
 const supermarkets = ref<Supermarket[]>([])
@@ -21,16 +38,8 @@ const {
   run: runLoad,
 } = useAsyncAction('Erro ao carregar preços', { immediate: true })
 
-const filterProduct = ref<number | ''>('')
-const {
-  query: filterProductQuery,
-  results: filterProductResults,
-  loading: filterProductSearchLoading,
-  search: searchFilterProductsDebounced,
-} = useDebouncedSearch<Product>(
-  async (query) => (await productsApi.getAll({ search: query })).data
-)
-const filterSupermarket = ref<number | ''>('')
+const filterProductObj = ref<Product | null>(null)
+const filterSupermarket = ref<number | undefined>(undefined)
 
 const showModal = ref(false)
 const editingPrice = ref<PriceRecord | null>(null)
@@ -54,23 +63,23 @@ const router = useRouter()
 const today = new Date().toISOString().substring(0, 10)
 const form = ref({
   variantId: '' as number | '',
-  supermarketId: '' as number | '',
+  supermarketId: '' as number | undefined,
   price: '' as number | '',
   quantity: 1,
   date: today,
   notes: '',
 })
 
-const {
-  query: formProductQuery,
-  results: formProductResults,
-  loading: formProductSearchLoading,
-  search: searchFormProducts,
-  clear: clearFormProductSearch,
-} = useDebouncedSearch<Product>(
-  async (query) => (await productsApi.getAll({ search: query })).data
-)
 const formProductObj = ref<Product | null>(null)
+
+async function searchFormProducts(query: string) {
+  return (await productsApi.getAll({ search: query })).data
+}
+
+function onFormProductChange() {
+  // muda o produto genérico — a variante anterior já não é válida
+  form.value.variantId = ''
+}
 
 const formVariants = computed(() => formProductObj.value?.variants ?? [])
 
@@ -92,12 +101,8 @@ function formatVariant(variant: {
 async function loadPrices() {
   const result = await runLoad(() =>
     pricesApi.getAll({
-      productId:
-        filterProduct.value !== '' ? Number(filterProduct.value) : undefined,
-      supermarketId:
-        filterSupermarket.value !== ''
-          ? Number(filterSupermarket.value)
-          : undefined,
+      productId: filterProductObj.value?.id,
+      supermarketId: filterSupermarket.value,
       limit: PAGE_SIZE,
       offset: page.value * PAGE_SIZE,
     })
@@ -108,27 +113,18 @@ async function loadPrices() {
   }
 }
 
-function searchFilterProducts() {
-  searchFilterProductsDebounced()
-  if (!filterProductQuery.value.trim() && filterProduct.value !== '') {
-    filterProduct.value = ''
-    applyFilters()
-  }
+async function searchFilterProducts(query: string) {
+  return (await productsApi.getAll({ search: query })).data
 }
 
-function selectFilterProduct(product: Product) {
-  filterProduct.value = product.id
-  filterProductQuery.value = product.name
-  filterProductResults.value = []
+function onFilterProductClear() {
+  filterProductObj.value = null
   applyFilters()
 }
 
-function selectFormProduct(product: Product) {
-  formProductObj.value = product
-  formProductQuery.value = product.name
-  formProductResults.value = []
-  // muda o produto genérico — a variante anterior já não é válida
-  form.value.variantId = ''
+function clearSupermarketFilter() {
+  filterSupermarket.value = undefined
+  applyFilters()
 }
 
 onMounted(async () => {
@@ -151,13 +147,12 @@ function openCreate() {
   editingPrice.value = null
   form.value = {
     variantId: '',
-    supermarketId: '',
+    supermarketId: undefined,
     price: '',
     quantity: 1,
     date: today,
     notes: '',
   }
-  clearFormProductSearch()
   formProductObj.value = null
   formError.value = ''
   showModal.value = true
@@ -173,8 +168,6 @@ async function openEdit(price: PriceRecord) {
     date: price.date.substring(0, 10),
     notes: price.notes ?? '',
   }
-  formProductResults.value = []
-  formProductQuery.value = price.variant?.product?.name ?? ''
   formProductObj.value = null
   formError.value = ''
   showModal.value = true
@@ -236,13 +229,8 @@ function applyFilters() {
   loadPrices()
 }
 
-function prevPage() {
-  page.value--
-  loadPrices()
-}
-
-function nextPage() {
-  page.value++
+function goToPage(newPage: number) {
+  page.value = newPage
   loadPrices()
 }
 
@@ -260,213 +248,144 @@ function formatDate(date: string) {
 
 <template>
   <div>
-    <div class="flex items-center justify-between mb-8">
+    <div class="mb-8 flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Preços</h1>
-        <p class="text-gray-500 mt-1">Registar e gerir preços de produtos</p>
+        <p class="mt-1 text-gray-500">Registar e gerir preços de produtos</p>
       </div>
-      <button class="btn-primary" @click="openCreate">
-        <svg
-          class="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
+      <Button @click="openCreate">
+        <PlusIcon class="size-4" />
         Registar Preço
-      </button>
+      </Button>
     </div>
 
     <!-- Filters -->
-    <div class="flex flex-col sm:flex-row gap-3 mb-6">
-      <div class="relative w-full sm:max-w-xs">
-        <div class="relative">
-          <input
-            v-model="filterProductQuery"
-            type="text"
-            class="input pr-9"
-            placeholder="Todos os produtos"
-            @input="searchFilterProducts"
-          />
-          <svg
-            v-if="filterProductSearchLoading"
-            class="animate-spin w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            />
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-            />
-          </svg>
-        </div>
-        <ul
-          v-if="filterProductResults.length > 0"
-          class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
-        >
-          <li
-            v-for="p in filterProductResults"
-            :key="p.id"
-            class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
-            @click="selectFilterProduct(p)"
-          >
-            {{ p.name }}
-          </li>
-        </ul>
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row">
+      <div class="w-full sm:max-w-xs">
+        <ProductCombobox
+          v-model="filterProductObj"
+          :search="searchFilterProducts"
+          :item-label="(p) => p.name"
+          placeholder="Todos os produtos"
+          @update:model-value="applyFilters"
+          @clear="onFilterProductClear"
+        />
       </div>
-      <select
-        v-model="filterSupermarket"
-        class="input max-w-xs"
-        @change="applyFilters"
-      >
-        <option value="">Todos os supermercados</option>
-        <option v-for="s in supermarkets" :key="s.id" :value="s.id">
-          {{ s.name }}
-        </option>
-      </select>
+      <div class="flex w-full max-w-xs items-center gap-1">
+        <Select v-model="filterSupermarket" @update:model-value="applyFilters">
+          <SelectTrigger class="w-full">
+            <SelectValue placeholder="Todos os supermercados" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="s in supermarkets" :key="s.id" :value="s.id">
+              {{ s.name }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          v-if="filterSupermarket !== undefined"
+          variant="ghost"
+          size="icon-sm"
+          title="Limpar filtro de supermercado"
+          @click="clearSupermarketFilter"
+        >
+          <XIcon class="size-4" />
+        </Button>
+      </div>
     </div>
 
     <!-- Table -->
-    <div class="card overflow-hidden">
-      <div v-if="loading" class="flex items-center justify-center h-40">
-        <div
-          class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"
-        ></div>
+    <Card class="py-0">
+      <div v-if="loading" class="flex h-40 items-center justify-center">
+        <Spinner class="size-8 text-brand-600" />
       </div>
-      <div
-        v-else-if="error || deleteError"
-        class="bg-red-50 border border-red-200 rounded-lg p-4 m-6 text-red-700 text-sm"
-      >
-        {{ error || deleteError }}
-      </div>
-      <table v-else class="w-full text-sm">
-        <thead class="bg-gray-50 border-b border-gray-100">
-          <tr>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">
-              Produto
-            </th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">
-              Supermercado
-            </th>
-            <th class="text-right px-6 py-3 font-medium text-gray-500">
-              Preço
-            </th>
-            <th class="text-right px-6 py-3 font-medium text-gray-500">Qtd.</th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">Data</th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">Notas</th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">
-              Utilizador
-            </th>
-            <th class="px-6 py-3"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-          <tr v-if="prices.length === 0">
-            <td colspan="8" class="text-center py-12 text-gray-400">
+      <Alert v-else-if="error || deleteError" variant="destructive" class="m-6">
+        <AlertDescription>{{ error || deleteError }}</AlertDescription>
+      </Alert>
+      <Table v-else>
+        <TableHeader>
+          <TableRow class="bg-gray-50">
+            <TableHead>Produto</TableHead>
+            <TableHead>Supermercado</TableHead>
+            <TableHead class="text-right">Preço</TableHead>
+            <TableHead class="text-right">Qtd.</TableHead>
+            <TableHead>Data</TableHead>
+            <TableHead>Notas</TableHead>
+            <TableHead>Utilizador</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-if="prices.length === 0">
+            <TableCell colspan="8" class="py-12 text-center text-gray-400">
               Nenhum registo encontrado
-            </td>
-          </tr>
-          <tr
-            v-for="price in prices"
-            :key="price.id"
-            class="hover:bg-gray-50 transition-colors"
-          >
-            <td class="px-6 py-4">
+            </TableCell>
+          </TableRow>
+          <TableRow v-for="price in prices" :key="price.id">
+            <TableCell>
               <p class="font-medium text-gray-900">
                 {{ price.variant?.product?.name }}
               </p>
               <p v-if="price.variant" class="text-xs text-gray-400">
                 {{ formatVariant(price.variant) }}
               </p>
-            </td>
-            <td class="px-6 py-4 text-gray-600">
+            </TableCell>
+            <TableCell class="text-gray-600">
               {{ price.supermarket?.name }}
-            </td>
-            <td class="px-6 py-4 text-right font-semibold text-brand-700">
+            </TableCell>
+            <TableCell class="text-right font-semibold text-brand-700">
               {{ formatPrice(price.price) }}
-            </td>
-            <td class="px-6 py-4 text-right text-gray-500">
+            </TableCell>
+            <TableCell class="text-right text-gray-500">
               {{ price.quantity }}
-            </td>
-            <td class="px-6 py-4 text-gray-500">
+            </TableCell>
+            <TableCell class="text-gray-500">
               {{ formatDate(price.date) }}
-            </td>
-            <td class="px-6 py-4 text-gray-400 text-xs max-w-32 truncate">
+            </TableCell>
+            <TableCell class="max-w-32 truncate text-xs text-gray-400">
               {{ price.notes ?? '—' }}
-            </td>
-            <td class="px-6 py-4">
+            </TableCell>
+            <TableCell>
               <div v-if="price.createdBy" class="text-xs">
-                <span class="text-gray-700 font-medium">{{
+                <span class="font-medium text-gray-700">{{
                   price.createdBy.name
                 }}</span>
                 <span
                   v-if="
                     price.updatedBy && price.updatedBy.id !== price.createdBy.id
                   "
-                  class="text-gray-400 block"
+                  class="block text-gray-400"
                 >
                   editado por {{ price.updatedBy.name }}
                 </span>
               </div>
-              <span v-else class="text-gray-300 text-xs">—</span>
-            </td>
-            <td class="px-6 py-4">
+              <span v-else class="text-xs text-gray-300">—</span>
+            </TableCell>
+            <TableCell>
               <div class="flex items-center justify-end gap-2">
-                <button class="btn-secondary btn-sm" @click="openEdit(price)">
-                  Editar
-                </button>
-                <button
-                  class="btn-danger btn-sm"
+                <Button variant="outline" size="sm" @click="openEdit(price)">Editar</Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  data-testid="delete-price"
                   @click="openDeleteConfirm(price)"
                 >
                   Eliminar
-                </button>
+                </Button>
               </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
 
-      <!-- Pagination -->
-      <div
+      <PaginationControls
         v-if="totalPages > 1"
-        class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500"
-      >
-        <span>{{ total }} registos</span>
-        <div class="flex items-center gap-2">
-          <button
-            class="btn-secondary btn-sm"
-            :disabled="page === 0"
-            @click="prevPage"
-          >
-            Anterior
-          </button>
-          <span>{{ page + 1 }} / {{ totalPages }}</span>
-          <button
-            class="btn-secondary btn-sm"
-            :disabled="page + 1 >= totalPages"
-            @click="nextPage"
-          >
-            Seguinte
-          </button>
-        </div>
-      </div>
-    </div>
+        :page="page"
+        :total-pages="totalPages"
+        :total="total"
+        @update:page="goToPage"
+      />
+    </Card>
 
     <FormDialog
       v-model="showModal"
@@ -477,108 +396,65 @@ function formatDate(date: string) {
       @submit="save"
     >
       <div class="space-y-4">
-        <div class="relative">
-          <label class="label">Produto *</label>
-          <div class="relative">
-            <input
-              v-model="formProductQuery"
-              type="text"
-              class="input pr-9"
-              placeholder="Pesquisar produto…"
-              @input="searchFormProducts"
-            />
-            <svg
-              v-if="formProductSearchLoading"
-              class="animate-spin w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              />
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-          </div>
-          <ul
-            v-if="formProductResults.length > 0"
-            class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
-          >
-            <li
-              v-for="p in formProductResults"
-              :key="p.id"
-              class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
-              @click="selectFormProduct(p)"
-            >
-              {{ p.name }}
-            </li>
-          </ul>
+        <div class="space-y-1.5">
+          <Label>Produto *</Label>
+          <ProductCombobox
+            v-model="formProductObj"
+            :search="searchFormProducts"
+            :item-label="(p) => p.name"
+            placeholder="Pesquisar produto…"
+            @update:model-value="onFormProductChange"
+          />
         </div>
-        <div>
-          <label class="label">Variante (marca) *</label>
-          <select
-            v-model="form.variantId"
-            class="input"
-            :disabled="!formProductObj"
-          >
-            <option value="">Selecionar variante…</option>
-            <option v-for="v in formVariants" :key="v.id" :value="v.id">
-              {{ formatVariant(v) }}
-            </option>
-          </select>
+        <div class="space-y-1.5">
+          <Label>Variante (marca) *</Label>
+          <Select v-model="form.variantId" :disabled="!formProductObj">
+            <SelectTrigger class="w-full">
+              <SelectValue placeholder="Selecionar variante…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="v in formVariants" :key="v.id" :value="v.id">
+                {{ formatVariant(v) }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <div>
-          <label class="label">Supermercado *</label>
-          <select v-model="form.supermarketId" class="input">
-            <option value="">Selecionar supermercado…</option>
-            <option v-for="s in supermarkets" :key="s.id" :value="s.id">
-              {{ s.name }}
-            </option>
-          </select>
+        <div class="space-y-1.5">
+          <Label>Supermercado *</Label>
+          <Select v-model="form.supermarketId">
+            <SelectTrigger class="w-full">
+              <SelectValue placeholder="Selecionar supermercado…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="s in supermarkets" :key="s.id" :value="s.id">
+                {{ s.name }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="label">Preço (€) *</label>
-            <input
+          <div class="space-y-1.5">
+            <Label>Preço (€) *</Label>
+            <Input
               v-model="form.price"
               type="number"
               step="0.01"
               min="0"
-              class="input"
               placeholder="0.00"
             />
           </div>
-          <div>
-            <label class="label">Quantidade</label>
-            <input
-              v-model="form.quantity"
-              type="number"
-              step="0.1"
-              min="0.1"
-              class="input"
-            />
+          <div class="space-y-1.5">
+            <Label>Quantidade</Label>
+            <Input v-model="form.quantity" type="number" step="0.1" min="0.1" />
           </div>
         </div>
-        <div>
-          <label class="label">Data</label>
-          <input v-model="form.date" type="date" class="input" />
+        <div class="space-y-1.5">
+          <Label>Data</Label>
+          <Input v-model="form.date" type="date" />
         </div>
-        <div>
-          <label class="label">Notas</label>
-          <input
-            v-model="form.notes"
-            type="text"
-            class="input"
-            placeholder="Opcional…"
-          />
+        <div class="space-y-1.5">
+          <Label>Notas</Label>
+          <Input v-model="form.notes" type="text" placeholder="Opcional…" />
         </div>
       </div>
     </FormDialog>

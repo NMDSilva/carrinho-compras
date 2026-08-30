@@ -64,6 +64,22 @@ async function select(item: T) {
   await nextTick()
   suppressNextChange = false
 }
+
+// Mantém o texto do input sincronizado quando `modelValue` é definido de
+// fora (ex: a view abre um formulário de edição já com um produto
+// selecionado, sem o utilizador ter pesquisado nada). `immediate` cobre o
+// caso de a combobox montar já com um `modelValue` inicial.
+watch(
+  () => props.modelValue,
+  async (item) => {
+    suppressNextChange = true
+    query.value = item ? props.itemLabel(item) : ''
+    results.value = []
+    await nextTick()
+    suppressNextChange = false
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
