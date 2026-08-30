@@ -37,6 +37,26 @@ describe('compras routes (N8N)', () => {
     expect(res.statusCode).toBe(401)
   })
 
+  it('rejeita api key errada, com o mesmo comprimento da esperada', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/compras',
+      headers: { 'x-api-key': 'test-api-kez' },
+      payload,
+    })
+    expect(res.statusCode).toBe(401)
+  })
+
+  it('rejeita api key errada, com comprimento diferente da esperada', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/compras',
+      headers: { 'x-api-key': 'errada' },
+      payload,
+    })
+    expect(res.statusCode).toBe(401)
+  })
+
   it('regista compra com api key válida', async () => {
     mockTransaction()
     prismaMock.user.findFirst.mockResolvedValueOnce({ id: 1 } as never)

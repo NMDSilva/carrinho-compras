@@ -1,5 +1,6 @@
 import Fastify, { FastifyRequest, FastifyReply } from 'fastify'
 import cors from '@fastify/cors'
+import helmet from '@fastify/helmet'
 import jwt from '@fastify/jwt'
 import rateLimit from '@fastify/rate-limit'
 import swagger from '@fastify/swagger'
@@ -39,6 +40,13 @@ export async function buildApp() {
         ? 'https://carrinhodecompras.pt'
         : 'http://localhost:5173',
     ],
+  })
+
+  await app.register(helmet, {
+    // CSP teria de ser afinada para a Swagger UI conseguir correr (scripts/estilos
+    // inline) — como /docs só existe fora de produção, mais simples desligar a CSP
+    // aí e manter a predefinição estrita do helmet em produção, onde /docs não existe.
+    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
   })
 
   await app.register(jwt, {
