@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { PlusIcon, StoreIcon } from '@lucide/vue'
 import { supermarketsApi } from '@/api'
 import type { Supermarket } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
 import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
+import { useToast } from '@/composables/useToast'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Spinner } from '@/components/ui/spinner'
 
 const supermarkets = ref<Supermarket[]>([])
 const { loading, error, run: runLoad } = useAsyncAction('Erro ao carregar supermercados', { immediate: true })
@@ -16,6 +24,8 @@ const { loading: saving, error: formError, run: runSave } = useAsyncAction('Erro
 const deleteTarget = ref<Supermarket | null>(null)
 const showDeleteConfirm = ref(false)
 const { loading: deleting, error: deleteError, run: runDelete } = useAsyncAction('Erro ao eliminar')
+
+const toast = useToast()
 
 async function loadSupermarkets() {
   const result = await runLoad(() => supermarketsApi.getAll())
@@ -53,6 +63,7 @@ async function save() {
   })
   if (result !== ASYNC_ACTION_FAILED) {
     showModal.value = false
+    toast.success(editingItem.value ? 'Supermercado atualizado com sucesso' : 'Supermercado criado com sucesso')
     await loadSupermarkets()
   }
 }
@@ -69,6 +80,7 @@ async function confirmDelete() {
   if (result !== ASYNC_ACTION_FAILED) {
     showDeleteConfirm.value = false
     deleteTarget.value = null
+    toast.success('Supermercado eliminado com sucesso')
     await loadSupermarkets()
   }
 }
@@ -76,60 +88,57 @@ async function confirmDelete() {
 
 <template>
   <div>
-    <div class="flex items-center justify-between mb-8">
+    <div class="mb-8 flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Supermercados</h1>
-        <p class="text-gray-500 mt-1">Gerir supermercados</p>
+        <p class="mt-1 text-gray-500">Gerir supermercados</p>
       </div>
-      <button class="btn-primary" @click="openCreate">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
+      <Button @click="openCreate">
+        <PlusIcon class="size-4" />
         Novo Supermercado
-      </button>
+      </Button>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center h-40">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+    <div v-if="loading" class="flex h-40 items-center justify-center">
+      <Spinner class="size-8 text-brand-600" />
     </div>
 
-    <div v-else-if="error || deleteError" class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
-      {{ error || deleteError }}
-    </div>
+    <Alert v-else-if="error || deleteError" variant="destructive">
+      <AlertDescription>{{ error || deleteError }}</AlertDescription>
+    </Alert>
 
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-if="supermarkets.length === 0" class="col-span-full text-center py-16 text-gray-400">
+    <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div v-if="supermarkets.length === 0" class="col-span-full py-16 text-center text-gray-400">
         Nenhum supermercado registado
       </div>
-      <div
+      <Card
         v-for="s in supermarkets"
         :key="s.id"
-        class="card p-5 flex items-start justify-between gap-4 hover:shadow-md transition-shadow"
+        class="flex flex-row items-start justify-between gap-4 p-5 transition-shadow hover:shadow-md"
       >
         <div class="flex items-start gap-4">
-          <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100">
+            <StoreIcon class="size-5 text-blue-600" />
           </div>
           <div>
             <p class="font-semibold text-gray-900">{{ s.name }}</p>
-            <p v-if="s.location" class="text-sm text-gray-500 mt-0.5">{{ s.location }}</p>
-            <p class="text-xs text-gray-400 mt-1">{{ s._count?.prices ?? 0 }} preços registados</p>
-            <div v-if="s.createdBy" class="text-xs text-gray-400 mt-1">
-              por <span class="text-gray-600 font-medium">{{ s.createdBy.name }}</span>
+            <p v-if="s.location" class="mt-0.5 text-sm text-gray-500">{{ s.location }}</p>
+            <p class="mt-1 text-xs text-gray-400">{{ s._count?.prices ?? 0 }} preços registados</p>
+            <div v-if="s.createdBy" class="mt-1 text-xs text-gray-400">
+              por <span class="font-medium text-gray-600">{{ s.createdBy.name }}</span>
               <template v-if="s.updatedBy && s.updatedBy.id !== s.createdBy.id">
-                · editado por <span class="text-gray-600 font-medium">{{ s.updatedBy.name }}</span>
+                · editado por <span class="font-medium text-gray-600">{{ s.updatedBy.name }}</span>
               </template>
             </div>
           </div>
         </div>
-        <div class="flex flex-col gap-2 flex-shrink-0">
-          <button @click="openEdit(s)" class="btn-secondary btn-sm">Editar</button>
-          <button @click="openDeleteConfirm(s)" class="btn-danger btn-sm">Eliminar</button>
+        <div class="flex flex-shrink-0 flex-col gap-2">
+          <Button variant="outline" size="sm" @click="openEdit(s)">Editar</Button>
+          <Button variant="destructive" size="sm" data-testid="delete-supermarket" @click="openDeleteConfirm(s)">
+            Eliminar
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
 
     <FormDialog
@@ -140,13 +149,13 @@ async function confirmDelete() {
       @submit="save"
     >
       <div class="space-y-4">
-        <div>
-          <label class="label">Nome *</label>
-          <input v-model="form.name" type="text" class="input" placeholder="ex: Continente" />
+        <div class="space-y-1.5">
+          <Label>Nome *</Label>
+          <Input v-model="form.name" type="text" placeholder="ex: Continente" />
         </div>
-        <div>
-          <label class="label">Localização</label>
-          <input v-model="form.location" type="text" class="input" placeholder="ex: Lisboa, Rua X" />
+        <div class="space-y-1.5">
+          <Label>Localização</Label>
+          <Input v-model="form.location" type="text" placeholder="ex: Lisboa, Rua X" />
         </div>
       </div>
     </FormDialog>
