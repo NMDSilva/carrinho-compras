@@ -1,36 +1,40 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { ScaleIcon } from '@lucide/vue'
 import { pricesApi, productsApi, supermarketsApi } from '@/api'
 import type { Product, Supermarket, CompareResult, PriceHistory } from '@/types'
 import {
   useAsyncAction,
   ASYNC_ACTION_FAILED,
 } from '@/composables/useAsyncAction'
-import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
+import ProductCombobox from '@/components/ProductCombobox.vue'
+import { Card } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Spinner } from '@/components/ui/spinner'
 
 const supermarkets = ref<Supermarket[]>([])
 const selectedProductObj = ref<Product | null>(null)
-const selectedVariant = ref<number | ''>('')
+const selectedVariant = ref<number | undefined>(undefined)
 const selectedSupermarkets = ref<number[]>([])
-const {
-  query: productQuery,
-  results: productResults,
-  loading: productSearchLoading,
-  search: searchProducts,
-} = useDebouncedSearch<Product>(
-  async (query) => (await productsApi.getAll({ search: query })).data
-)
+
+async function searchProducts(query: string) {
+  return (await productsApi.getAll({ search: query })).data
+}
+
+function toggleSupermarket(id: number, checked: boolean | 'indeterminate') {
+  selectedSupermarkets.value = checked
+    ? [...selectedSupermarkets.value, id]
+    : selectedSupermarkets.value.filter((x) => x !== id)
+}
 
 // Variantes do produto selecionado — já vêm incluídas em productsApi.getAll().
 const variantsOfSelected = computed(
   () => selectedProductObj.value?.variants ?? []
 )
-
-function selectProduct(product: Product) {
-  selectedProductObj.value = product
-  productQuery.value = product.name
-  productResults.value = []
-}
 
 function formatVariant(variant: {
   brand: string | null
@@ -75,7 +79,7 @@ async function loadHistory() {
   if (!selectedVariant.value) return
   const result = await runHistory(() =>
     pricesApi.history(
-      Number(selectedVariant.value),
+      selectedVariant.value!,
       selectedSupermarkets.value.length ? selectedSupermarkets.value : undefined
     )
   )
@@ -85,7 +89,7 @@ async function loadHistory() {
 watch(selectedProductObj, () => {
   compareResult.value = null
   historyResult.value = null
-  selectedVariant.value = ''
+  selectedVariant.value = undefined
   selectedSupermarkets.value = []
   compareError.value = ''
   historyError.value = ''
@@ -141,147 +145,80 @@ const BG_COLORS = [
   <div>
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-900">Comparar Preços</h1>
-      <p class="text-gray-500 mt-1">
+      <p class="mt-1 text-gray-500">
         Compare preços de um produto entre marcas/supermercados e veja a
         evolução
       </p>
     </div>
 
     <!-- Product selector -->
-    <div class="card p-6 mb-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="relative">
-          <label class="label">Produto</label>
-          <div class="relative">
-            <input
-              v-model="productQuery"
-              type="text"
-              class="input pr-9"
-              placeholder="Pesquisar produto…"
-              @input="searchProducts"
-            />
-            <svg
-              v-if="productSearchLoading"
-              class="animate-spin w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              />
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-          </div>
-          <ul
-            v-if="productResults.length > 0"
-            class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
-          >
-            <li
-              v-for="p in productResults"
-              :key="p.id"
-              class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
-              @click="selectProduct(p)"
-            >
-              {{ p.name }}
-            </li>
-          </ul>
+    <Card class="mb-6 p-6">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5">
+          <Label>Produto</Label>
+          <ProductCombobox
+            v-model="selectedProductObj"
+            :search="searchProducts"
+            :item-label="(p) => p.name"
+            placeholder="Pesquisar produto…"
+          />
         </div>
-        <div v-if="selectedProductObj">
-          <label class="label">Variante (para o histórico)</label>
-          <select v-model="selectedVariant" class="input">
-            <option value="">Selecionar variante…</option>
-            <option v-for="v in variantsOfSelected" :key="v.id" :value="v.id">
-              {{ formatVariant(v) }}
-            </option>
-          </select>
+        <div v-if="selectedProductObj" class="space-y-1.5">
+          <Label>Variante (para o histórico)</Label>
+          <Select v-model="selectedVariant">
+            <SelectTrigger class="w-full" data-testid="variant-select-trigger">
+              <SelectValue placeholder="Selecionar variante…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="v in variantsOfSelected"
+                :key="v.id"
+                :value="v.id"
+                :data-testid="`variant-option-${v.id}`"
+              >
+                {{ formatVariant(v) }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
-      <div v-if="selectedVariant" class="mt-4">
-        <label class="label">Filtrar supermercados (histórico)</label>
-        <div class="flex flex-wrap gap-2 mt-1">
-          <label
+      <div v-if="selectedVariant" class="mt-4 space-y-1.5">
+        <Label>Filtrar supermercados (histórico)</Label>
+        <div class="flex flex-wrap gap-4">
+          <Label
             v-for="s in supermarkets"
             :key="s.id"
-            class="inline-flex items-center gap-1.5 cursor-pointer text-sm"
+            class="cursor-pointer gap-1.5 text-sm font-normal"
           >
-            <input
-              v-model="selectedSupermarkets"
-              type="checkbox"
-              :value="s.id"
-              class="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            <Checkbox
+              :model-value="selectedSupermarkets.includes(s.id)"
+              @update:model-value="toggleSupermarket(s.id, $event)"
             />
             {{ s.name }}
-          </label>
+          </Label>
         </div>
       </div>
-    </div>
+    </Card>
 
-    <div
-      v-if="compareError || historyError"
-      class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm"
-    >
-      {{ compareError || historyError }}
-    </div>
+    <Alert v-if="compareError || historyError" variant="destructive" class="mb-6">
+      <AlertDescription>{{ compareError || historyError }}</AlertDescription>
+    </Alert>
 
-    <div v-if="!selectedProductObj" class="card p-16 text-center text-gray-400">
-      <svg
-        class="w-12 h-12 mx-auto mb-3 opacity-30"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.5"
-          d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
-        />
-      </svg>
+    <Card v-if="!selectedProductObj" class="p-16 text-center text-gray-400">
+      <ScaleIcon class="mx-auto mb-3 size-12 opacity-30" stroke-width="1.5" />
       <p>Seleciona um produto para comparar preços</p>
-    </div>
+    </Card>
 
-    <div v-else>
-      <!-- Tabs -->
-      <div class="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit mb-6">
-        <button
-          class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          :class="
-            activeTab === 'compare'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
-          "
-          @click="activeTab = 'compare'"
-        >
-          Comparação Atual
-        </button>
-        <button
-          class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          :class="
-            activeTab === 'history'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
-          "
-          @click="activeTab = 'history'"
-        >
-          Histórico de Preços
-        </button>
-      </div>
+    <Tabs v-else v-model="activeTab">
+      <TabsList class="mb-6">
+        <TabsTrigger value="compare">Comparação Atual</TabsTrigger>
+        <TabsTrigger value="history">Histórico de Preços</TabsTrigger>
+      </TabsList>
 
       <!-- Compare tab -->
-      <div v-if="activeTab === 'compare'">
-        <div v-if="loading" class="flex items-center justify-center h-40">
-          <div
-            class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"
-          ></div>
+      <TabsContent value="compare">
+        <div v-if="loading" class="flex h-40 items-center justify-center">
+          <Spinner class="size-8 text-brand-600" />
         </div>
         <div v-else-if="compareResult">
           <div class="mb-4">
@@ -293,23 +230,20 @@ const BG_COLORS = [
             </p>
           </div>
 
-          <div
-            v-if="compareResult.prices.length === 0"
-            class="card p-10 text-center text-gray-400"
-          >
+          <Card v-if="compareResult.prices.length === 0" class="p-10 text-center text-gray-400">
             Nenhum preço registado para este produto
-          </div>
+          </Card>
 
           <div v-else class="space-y-3">
-            <div
+            <Card
               v-for="(price, index) in compareResult.prices"
               :key="price.id"
-              class="card p-5 flex items-center justify-between gap-6"
+              class="flex-row items-center justify-between gap-6 p-5"
               :class="index === 0 ? 'ring-2 ring-brand-500' : ''"
             >
               <div class="flex items-center gap-4">
                 <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                  class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
                   :class="
                     index === 0
                       ? 'bg-brand-500'
@@ -344,55 +278,42 @@ const BG_COLORS = [
                 </p>
                 <p
                   v-if="index === 0"
-                  class="text-xs font-medium text-brand-600 mt-0.5"
+                  class="mt-0.5 text-xs font-medium text-brand-600"
                 >
                   mais barato
                 </p>
-                <p v-else class="text-xs text-red-500 mt-0.5">
+                <p v-else class="mt-0.5 text-xs text-red-500">
                   +{{
                     formatPrice(price.price - compareResult!.prices[0].price)
                   }}
                 </p>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
-      </div>
+      </TabsContent>
 
       <!-- History tab -->
-      <div v-if="activeTab === 'history'">
-        <div
-          v-if="!selectedVariant"
-          class="card p-10 text-center text-gray-400"
-        >
+      <TabsContent value="history">
+        <Card v-if="!selectedVariant" class="p-10 text-center text-gray-400">
           Seleciona uma variante para ver o histórico de preços
-        </div>
-        <div
-          v-else-if="loadingHistory"
-          class="flex items-center justify-center h-40"
-        >
-          <div
-            class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"
-          ></div>
+        </Card>
+        <div v-else-if="loadingHistory" class="flex h-40 items-center justify-center">
+          <Spinner class="size-8 text-brand-600" />
         </div>
         <div v-else-if="historyResult">
-          <div
-            v-if="historyResult.history.length === 0"
-            class="card p-10 text-center text-gray-400"
-          >
+          <Card v-if="historyResult.history.length === 0" class="p-10 text-center text-gray-400">
             Nenhum histórico disponível
-          </div>
+          </Card>
           <div v-else class="space-y-6">
-            <div
+            <Card
               v-for="(group, gi) in historyResult.history"
               :key="group.supermarket.id"
-              class="card overflow-hidden"
+              class="py-0"
             >
-              <div
-                class="px-6 py-4 border-b border-gray-100 flex items-center gap-3"
-              >
+              <div class="flex items-center gap-3 border-b border-gray-100 px-6 py-4">
                 <div
-                  class="w-3 h-3 rounded-full"
+                  class="h-3 w-3 rounded-full"
                   :class="BG_COLORS[gi % BG_COLORS.length]"
                 ></div>
                 <h3 class="font-semibold text-gray-900">
@@ -402,18 +323,16 @@ const BG_COLORS = [
                   >{{ group.records.length }} registos</span
                 >
               </div>
-              <div class="p-4 space-y-2">
+              <div class="space-y-2 p-4">
                 <div
                   v-for="record in [...group.records].reverse()"
                   :key="record.date"
                   class="flex items-center gap-4"
                 >
-                  <span class="text-xs text-gray-400 w-24 flex-shrink-0">{{
+                  <span class="w-24 flex-shrink-0 text-xs text-gray-400">{{
                     formatDate(record.date)
                   }}</span>
-                  <div
-                    class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden"
-                  >
+                  <div class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
                     <div
                       class="h-2 rounded-full transition-all"
                       :class="BG_COLORS[gi % BG_COLORS.length]"
@@ -427,17 +346,17 @@ const BG_COLORS = [
                     ></div>
                   </div>
                   <span
-                    class="text-sm font-semibold w-16 text-right"
+                    class="w-16 text-right text-sm font-semibold"
                     :class="COLORS[gi % COLORS.length]"
                   >
                     {{ formatPrice(record.price) }}
                   </span>
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
-      </div>
-    </div>
+      </TabsContent>
+    </Tabs>
   </div>
 </template>

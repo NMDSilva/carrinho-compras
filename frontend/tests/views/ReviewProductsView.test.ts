@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, DOMWrapper } from '@vue/test-utils'
 import ReviewProductsView from '@/views/ReviewProductsView.vue'
+import { flushTeleport } from '../helpers/teleport'
+
+const body = new DOMWrapper(document.body)
 
 const { getAllMock, markReviewedMock, reassignMock } = vi.hoisted(() => ({
   getAllMock: vi.fn(),
@@ -79,7 +82,7 @@ describe('ReviewProductsView', () => {
     await flush()
     await wrapper.vm.$nextTick()
 
-    await wrapper.find('button.btn-primary').trigger('click')
+    await wrapper.find('[data-testid="mark-reviewed-button"]').trigger('click')
     await flush()
     await wrapper.vm.$nextTick()
 
@@ -100,19 +103,20 @@ describe('ReviewProductsView', () => {
       .mockResolvedValueOnce(page([target])) // resultado da pesquisa
       .mockResolvedValueOnce(page([])) // recarga após reatribuir
     reassignMock.mockResolvedValue({})
-    const wrapper = mount(ReviewProductsView)
+    const wrapper = mount(ReviewProductsView, { attachTo: document.body })
 
     await flush()
     await wrapper.vm.$nextTick()
 
-    await wrapper.find('input[type="text"]').setValue('Açúcar')
+    await wrapper.find('[data-testid="combobox-input"]').setValue('Açúcar')
     await new Promise((r) => setTimeout(r, 320)) // aguarda o debounce de 300ms
     await wrapper.vm.$nextTick()
+    await flushTeleport()
 
-    await wrapper.find('li').trigger('click')
+    await body.find('[data-testid="combobox-option"]').trigger('click')
     await wrapper.vm.$nextTick()
 
-    const reassignButton = wrapper.find('button.btn-secondary')
+    const reassignButton = wrapper.find('[data-testid="reassign-button"]')
     expect((reassignButton.element as HTMLButtonElement).disabled).toBe(false)
     await reassignButton.trigger('click')
     await flush()

@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T">
-import { computed, watch } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 import {
   Command,
   CommandGroup,
@@ -43,23 +43,26 @@ const open = computed(() => loading.value || results.value.length > 0)
 // `passive`) só atualiza `query` através do próprio ciclo reativo do Vue —
 // um handler `@input` corre antes dessa atualização e lê sempre o valor
 // anterior. `suppressNextChange` evita que o próprio `select()` (que também
-// escreve em `query`) dispare uma nova pesquisa a seguir a uma seleção.
+// escreve em `query`) dispare uma nova pesquisa a seguir a uma seleção — é
+// limpa em `nextTick()` em vez de dentro do próprio watch, porque o Vue não
+// dispara `watch` quando o valor escrito é igual ao anterior (comum: o
+// texto pesquisado já coincidir com o nome do item escolhido), o que
+// deixava a flag presa e silenciava a pesquisa seguinte.
 let suppressNextChange = false
 
 watch(query, (newQuery) => {
-  if (suppressNextChange) {
-    suppressNextChange = false
-    return
-  }
+  if (suppressNextChange) return
   if (props.modelValue && !newQuery.trim()) emit('clear')
   runSearch()
 })
 
-function select(item: T) {
+async function select(item: T) {
   suppressNextChange = true
   query.value = props.itemLabel(item)
   results.value = []
   emit('update:modelValue', item)
+  await nextTick()
+  suppressNextChange = false
 }
 </script>
 

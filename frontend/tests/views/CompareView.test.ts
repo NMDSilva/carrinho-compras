@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, DOMWrapper } from '@vue/test-utils'
 import CompareView from '@/views/CompareView.vue'
+import { flushTeleport } from '../helpers/teleport'
+import { selectOption } from '../helpers/select'
+
+const body = new DOMWrapper(document.body)
 
 const { getAllMock, supermarketsGetAllMock, compareMock, historyMock } =
   vi.hoisted(() => ({
@@ -34,10 +38,11 @@ async function searchAndSelectProduct(
   wrapper: ReturnType<typeof mount>,
   query: string
 ) {
-  await wrapper.find('input[placeholder="Pesquisar produto…"]').setValue(query)
+  await wrapper.find('[data-testid="combobox-input"]').setValue(query)
   await new Promise((r) => setTimeout(r, 320)) // aguarda o debounce de 300ms
   await wrapper.vm.$nextTick()
-  await wrapper.find('li').trigger('click')
+  await flushTeleport()
+  await body.find('[data-testid="combobox-option"]').trigger('click')
   await wrapper.vm.$nextTick()
 }
 
@@ -54,7 +59,7 @@ describe('CompareView', () => {
   it('mostra o erro real quando a comparação falha', async () => {
     compareMock.mockRejectedValue({ data: { error: 'Produto sem preços' } })
     historyMock.mockResolvedValue({ product, history: [] })
-    const wrapper = mount(CompareView)
+    const wrapper = mount(CompareView, { attachTo: document.body })
     await flush()
 
     await searchAndSelectProduct(wrapper, 'Leite')
@@ -65,14 +70,13 @@ describe('CompareView', () => {
   it('mostra o erro real quando o histórico falha', async () => {
     compareMock.mockResolvedValue({ product, prices: [] })
     historyMock.mockRejectedValue({ data: { error: 'Histórico indisponível' } })
-    const wrapper = mount(CompareView)
+    const wrapper = mount(CompareView, { attachTo: document.body })
     await flush()
 
     await searchAndSelectProduct(wrapper, 'Leite')
 
-    // segundo select só aparece depois de escolher o produto — é a variante,
-    // necessária para carregar o histórico
-    await wrapper.find('select').setValue('10')
+    // o select de variante só aparece depois de escolher o produto
+    await selectOption(body, '[data-testid="variant-select-trigger"]', '[data-testid="variant-option-10"]')
     await flush()
     await wrapper.vm.$nextTick()
 
@@ -84,7 +88,7 @@ describe('CompareView', () => {
       data: { error: 'Erro no primeiro produto' },
     })
     historyMock.mockResolvedValue({ product, history: [] })
-    const wrapper = mount(CompareView)
+    const wrapper = mount(CompareView, { attachTo: document.body })
     await flush()
 
     await searchAndSelectProduct(wrapper, 'Leite')

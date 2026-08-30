@@ -13,6 +13,15 @@ if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {}
 }
 
+// jsdom não implementa a Pointer Capture API — o SelectTrigger do shadcn-vue
+// (reka-ui) chama hasPointerCapture/releasePointerCapture no pointerdown que
+// abre o dropdown.
+if (typeof Element !== 'undefined' && !Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false
+  Element.prototype.setPointerCapture = () => {}
+  Element.prototype.releasePointerCapture = () => {}
+}
+
 beforeEach(() => {
   localStorage.clear()
 })

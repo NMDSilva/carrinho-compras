@@ -6,6 +6,19 @@ import {
   useAsyncAction,
   ASYNC_ACTION_FAILED,
 } from '@/composables/useAsyncAction'
+import ProductCombobox from '@/components/ProductCombobox.vue'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Spinner } from '@/components/ui/spinner'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 const products = ref<Product[]>([])
 const {
@@ -14,12 +27,9 @@ const {
   run: runLoad,
 } = useAsyncAction('Erro ao carregar produtos por rever', { immediate: true })
 
-// Pesquisa de produto destino, por linha (chave = id do produto placeholder)
-// — cada linha tem o seu próprio debounce/loading, para a pesquisa numa
-// linha não cancelar a pesquisa pendente de outra.
-const reassignQuery = ref<Record<number, string>>({})
-const reassignResults = ref<Record<number, Product[]>>({})
-const reassignLoading = ref<Record<number, boolean>>({})
+// Alvo de reatribuição, por linha (chave = id do produto placeholder) — cada
+// linha tem o seu próprio ProductCombobox, com o seu próprio estado de
+// pesquisa/debounce independente.
 const reassignTarget = ref<Record<number, Product | null>>({})
 const { error: reassignError, run: runReassign } = useAsyncAction(
   'Erro ao reatribuir variante'
@@ -28,9 +38,6 @@ const { error: reviewError, run: runMarkReviewed } = useAsyncAction(
   'Erro ao marcar como revisto'
 )
 
-const searchDebounces: Record<number, ReturnType<typeof setTimeout>> = {}
-const searchRequestIds: Record<number, number> = {}
-
 async function loadProducts() {
   const result = await runLoad(() => productsApi.getAll({ needsReview: true }))
   if (result !== ASYNC_ACTION_FAILED) products.value = result.data
@@ -38,38 +45,10 @@ async function loadProducts() {
 
 onMounted(loadProducts)
 
-function searchTarget(productId: number) {
-  clearTimeout(searchDebounces[productId])
-  const query = reassignQuery.value[productId]?.trim()
-  if (!query) {
-    reassignResults.value = { ...reassignResults.value, [productId]: [] }
-    reassignLoading.value = { ...reassignLoading.value, [productId]: false }
-    return
-  }
-  searchDebounces[productId] = setTimeout(async () => {
-    const requestId = (searchRequestIds[productId] ?? 0) + 1
-    searchRequestIds[productId] = requestId
-    reassignLoading.value = { ...reassignLoading.value, [productId]: true }
-    try {
-      const { data } = await productsApi.getAll({ search: query })
-      if (searchRequestIds[productId] !== requestId) return
-      // não faz sentido reatribuir um placeholder para si próprio
-      reassignResults.value = {
-        ...reassignResults.value,
-        [productId]: data.filter((p) => p.id !== productId),
-      }
-    } finally {
-      if (searchRequestIds[productId] === requestId) {
-        reassignLoading.value = { ...reassignLoading.value, [productId]: false }
-      }
-    }
-  }, 300)
-}
-
-function selectTarget(productId: number, target: Product) {
-  reassignTarget.value = { ...reassignTarget.value, [productId]: target }
-  reassignQuery.value = { ...reassignQuery.value, [productId]: target.name }
-  reassignResults.value = { ...reassignResults.value, [productId]: [] }
+async function searchTarget(productId: number, query: string) {
+  const { data } = await productsApi.getAll({ search: query })
+  // não faz sentido reatribuir um placeholder para si próprio
+  return data.filter((p) => p.id !== productId)
 }
 
 async function reassign(product: Product) {
@@ -109,122 +88,73 @@ function formatVariant(product: Product) {
   <div>
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-900">Produtos por rever</h1>
-      <p class="text-gray-500 mt-1">
+      <p class="mt-1 text-gray-500">
         Produtos criados automaticamente pela importação de faturas — reatribui
         a variante para um produto já existente ou marca como revisto se o nome
         já estiver correto.
       </p>
     </div>
 
-    <div class="card overflow-hidden">
-      <div v-if="loading" class="flex items-center justify-center h-40">
-        <div
-          class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"
-        ></div>
+    <Card class="py-0">
+      <div v-if="loading" class="flex h-40 items-center justify-center">
+        <Spinner class="size-8 text-brand-600" />
       </div>
-      <div
-        v-else-if="error"
-        class="bg-red-50 border border-red-200 rounded-lg p-4 m-6 text-red-700 text-sm"
-      >
-        {{ error }}
-      </div>
-      <div
-        v-else-if="products.length === 0"
-        class="text-center py-12 text-gray-400"
-      >
+      <Alert v-else-if="error" variant="destructive" class="m-6">
+        <AlertDescription>{{ error }}</AlertDescription>
+      </Alert>
+      <div v-else-if="products.length === 0" class="py-12 text-center text-gray-400">
         Não há produtos por rever de momento.
       </div>
-      <table v-else class="w-full text-sm">
-        <thead class="bg-gray-50 border-b border-gray-100">
-          <tr>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">
-              Nome (texto da fatura)
-            </th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">
-              Variante
-            </th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">
-              Reatribuir para
-            </th>
-            <th class="px-6 py-3"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-          <tr v-for="product in products" :key="product.id">
-            <td class="px-6 py-4 font-medium text-gray-900">
+      <Table v-else>
+        <TableHeader>
+          <TableRow class="bg-gray-50">
+            <TableHead>Nome (texto da fatura)</TableHead>
+            <TableHead>Variante</TableHead>
+            <TableHead>Reatribuir para</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="product in products" :key="product.id">
+            <TableCell class="font-medium text-gray-900">
               {{ product.name }}
-            </td>
-            <td class="px-6 py-4 text-gray-500">
+            </TableCell>
+            <TableCell class="text-gray-500">
               {{ formatVariant(product) }}
-            </td>
-            <td class="px-6 py-4 relative">
-              <div class="relative">
-                <input
-                  v-model="reassignQuery[product.id]"
-                  type="text"
-                  class="input pr-9"
+            </TableCell>
+            <TableCell>
+              <div class="w-64">
+                <ProductCombobox
+                  v-model="reassignTarget[product.id]"
+                  :search="(q) => searchTarget(product.id, q)"
+                  :item-label="(p) => p.name"
                   placeholder="Pesquisar produto existente..."
-                  @input="searchTarget(product.id)"
                 />
-                <svg
-                  v-if="reassignLoading[product.id]"
-                  class="animate-spin w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  />
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
               </div>
-              <ul
-                v-if="reassignResults[product.id]?.length"
-                class="absolute z-10 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
-              >
-                <li
-                  v-for="candidate in reassignResults[product.id]"
-                  :key="candidate.id"
-                  class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
-                  @click="selectTarget(product.id, candidate)"
-                >
-                  {{ candidate.name }}
-                </li>
-              </ul>
-            </td>
-            <td class="px-6 py-4">
+            </TableCell>
+            <TableCell>
               <div class="flex items-center justify-end gap-2">
-                <button
-                  class="btn-secondary btn-sm"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="reassign-button"
                   :disabled="!reassignTarget[product.id]"
                   @click="reassign(product)"
                 >
                   Reatribuir
-                </button>
-                <button
-                  class="btn-primary btn-sm"
-                  @click="markReviewed(product)"
-                >
+                </Button>
+                <Button size="sm" data-testid="mark-reviewed-button" @click="markReviewed(product)">
                   Marcar como revisto
-                </button>
+                </Button>
               </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </Card>
 
-    <p v-if="reassignError || reviewError" class="text-sm text-red-600 mt-4">
-      {{ reassignError || reviewError }}
-    </p>
+    <Alert v-if="reassignError || reviewError" variant="destructive" class="mt-4">
+      <AlertDescription>{{ reassignError || reviewError }}</AlertDescription>
+    </Alert>
   </div>
 </template>
