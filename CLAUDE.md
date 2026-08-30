@@ -78,6 +78,11 @@ Push para o branch `staging` dispara `.github/workflows/deploy-staging.yml` — 
 2. Adicionar o secret `ENV_FILE_STAGING` no GitHub — mesmas variáveis que `ENV_FILE`, mas com `PORT` diferente (ex: `3001`) e `DATABASE_URL` a apontar para `carrinho_compras_staging` em vez de `carrinho_compras` (mesmo host/porta do Postgres, só muda o nome da BD).
 3. Para aceder à app de staging: por omissão só fica acessível na VM (`curl localhost:3001/api/health`) ou via túnel SSH (`ssh -L 3001:localhost:3001 <user>@<host>`) — não há vhost nginx automático. Se quiseres um URL público, cria um `server` block extra no nginx da VM a apontar para a porta de staging e para `~/carrinho-compras-staging/frontend/dist` (o `nginx.conf` no repo é só referência, não é aplicado automaticamente em nenhum dos dois ambientes).
 
+## Tarefas em aberto / dívida técnica conhecida
+
+- **Staging**: confirmado em 2026-08-30 que o branch `staging` ainda não existe e o secret `ENV_FILE_STAGING` ainda não está criado no GitHub — ver secção "Staging" acima para os passos.
+- **Achados de auditorias de segurança/qualidade**: registados em [`AUDITORIA.md`](./AUDITORIA.md), com checkbox por achado (por resolver / corrigido). Consultar esse ficheiro antes de propor trabalho novo em áreas já auditadas, e marcar os achados como corrigidos ali (não aqui) quando resolvidos.
+
 ## Convenções do repositório
 
 - Branches: `feature/<descrição>`. `staging` é um branch especial de longa duração — ver secção "Staging".

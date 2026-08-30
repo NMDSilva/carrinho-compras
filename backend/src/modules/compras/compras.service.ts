@@ -37,8 +37,11 @@ export async function registarCompra(body: ComprasRequest) {
   const [day, month, year] = body.data.split('/')
   const date = new Date(`${year}-${month}-${day}T12:00:00.000Z`)
 
+  // emailVerified: true é obrigatório aqui — sem isto, mudar o próprio email
+  // para o de outra pessoa (mesmo sem o confirmar) bastaria para sequestrar
+  // as faturas dela assim que chegassem via n8n.
   const user = await prisma.user.findFirst({
-    where: { email: { equals: body.email, mode: 'insensitive' } },
+    where: { email: { equals: body.email, mode: 'insensitive' }, emailVerified: true },
   })
 
   const userId = user ? user.id : (await getOrCreateSystemUser()).id

@@ -56,6 +56,26 @@ describe('compras routes (N8N)', () => {
     expect(res.json()).toMatchObject({ supermarketId: 1, productsCreated: 1, pricesCreated: 1 })
   })
 
+  it('só associa a fatura a um utilizador com email confirmado (evita sequestro por troca de email)', async () => {
+    mockTransaction()
+    prismaMock.user.findFirst.mockResolvedValueOnce({ id: 1 } as never)
+    prismaMock.supermarket.findFirst.mockResolvedValueOnce({ id: 1, name: 'Continente' } as never)
+    prismaMock.product.findFirst.mockResolvedValueOnce(null)
+    prismaMock.product.create.mockResolvedValueOnce({ id: 1, name: 'Leite', variants: [{ id: 1 }] } as never)
+    prismaMock.priceRecord.create.mockResolvedValueOnce({ id: 1 } as never)
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/compras',
+      headers: { 'x-api-key': 'test-api-key' },
+      payload,
+    })
+
+    expect(prismaMock.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ emailVerified: true }) })
+    )
+  })
+
   it('usa o utilizador Sistema quando o email da fatura é desconhecido', async () => {
     mockTransaction()
     prismaMock.user.findFirst.mockResolvedValueOnce(null)

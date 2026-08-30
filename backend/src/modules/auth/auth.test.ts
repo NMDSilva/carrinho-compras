@@ -231,6 +231,99 @@ describe('auth routes', () => {
     expect(res.statusCode).toBe(401)
   })
 
+  describe('atualização de perfil (PATCH /me)', () => {
+    it('muda o nome sem repor emailVerified nem reenviar verificação', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana',
+        email: 'ana@example.com',
+        password: 'hashed',
+        role: 'USER',
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never)
+      prismaMock.user.update.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana Nova',
+        email: 'ana@example.com',
+        role: 'USER',
+        createdAt: new Date().toISOString(),
+      } as never)
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/auth/me',
+        headers: authHeader(app, { sub: 1, role: 'USER' }),
+        payload: { name: 'Ana Nova' },
+      })
+
+      expect(res.statusCode).toBe(200)
+      expect(prismaMock.user.update).toHaveBeenCalledTimes(1)
+      expect(sendVerificationEmailMock).not.toHaveBeenCalled()
+    })
+
+    it('repõe emailVerified e reenvia a verificação quando o email muda', async () => {
+      prismaMock.user.findUnique
+        .mockResolvedValueOnce({
+          id: 1,
+          name: 'Ana',
+          email: 'ana@example.com',
+          password: 'hashed',
+          role: 'USER',
+          emailVerified: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as never)
+        .mockResolvedValueOnce(null) // novo email ainda livre
+      prismaMock.user.update.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana',
+        email: 'nova@example.com',
+        role: 'USER',
+        createdAt: new Date().toISOString(),
+      } as never)
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/auth/me',
+        headers: authHeader(app, { sub: 1, role: 'USER' }),
+        payload: { email: 'nova@example.com' },
+      })
+
+      expect(res.statusCode).toBe(200)
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ email: 'nova@example.com', emailVerified: false }) })
+      )
+      expect(sendVerificationEmailMock).toHaveBeenCalledWith('nova@example.com', 'Ana', expect.any(String))
+    })
+
+    it('rejeita mudança para um email já em uso por outra conta, sem reenviar verificação', async () => {
+      prismaMock.user.findUnique
+        .mockResolvedValueOnce({
+          id: 1,
+          name: 'Ana',
+          email: 'ana@example.com',
+          password: 'hashed',
+          role: 'USER',
+          emailVerified: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as never)
+        .mockResolvedValueOnce({ id: 2, email: 'ocupado@example.com' } as never)
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/auth/me',
+        headers: authHeader(app, { sub: 1, role: 'USER' }),
+        payload: { email: 'ocupado@example.com' },
+      })
+
+      expect(res.statusCode).toBe(409)
+      expect(sendVerificationEmailMock).not.toHaveBeenCalled()
+    })
+  })
+
   describe('verificação de email', () => {
     it('confirma o email com um token válido', async () => {
       prismaMock.user.findUnique.mockResolvedValueOnce({

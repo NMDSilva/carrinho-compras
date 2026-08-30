@@ -88,14 +88,20 @@ export async function updateMe(request: FastifyRequest, reply: FastifyReply) {
     const taken = await authService.findUserByEmail(data.email)
     if (taken) return reply.status(409).send({ error: 'Email já em uso' })
   }
+  const emailChanged = Boolean(data.email && data.email !== user.email)
   const updateData: Record<string, unknown> = {}
   if (data.name) updateData.name = data.name
   if (data.email) updateData.email = data.email
+  if (emailChanged) updateData.emailVerified = false
   if (data.newPassword) {
     const valid = await authService.comparePassword(data.currentPassword!, user.password)
     if (!valid) return reply.status(400).send({ error: 'Password atual incorreta' })
     updateData.password = await authService.hashPassword(data.newPassword)
   }
   const updated = await authService.updateProfile(userId, updateData)
+  if (emailChanged) {
+    const token = await authService.setVerificationToken(userId)
+    await sendVerificationEmail(updated.email, updated.name, token)
+  }
   return reply.send(updated)
 }
