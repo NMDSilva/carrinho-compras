@@ -2,18 +2,36 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { productsApi, variantsApi } from '@/api'
 import { useRoute, useRouter } from 'vue-router'
+import { ChevronRightIcon, PlusIcon, XIcon } from '@lucide/vue'
 import type { Product, ProductVariant } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
+import ProductCombobox from '@/components/ProductCombobox.vue'
+import PaginationControls from '@/components/PaginationControls.vue'
 import {
   useAsyncAction,
   ASYNC_ACTION_FAILED,
 } from '@/composables/useAsyncAction'
-import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Spinner } from '@/components/ui/spinner'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 const products = ref<Product[]>([])
 const categories = ref<string[]>([])
 const search = ref('')
-const filterCategory = ref('')
+const filterCategory = ref<string | undefined>(undefined)
 const expanded = ref<Set<number>>(new Set())
 const total = ref(0)
 const page = ref(0)
@@ -27,6 +45,11 @@ const {
 function applyFilters() {
   page.value = 0
   loadProducts()
+}
+
+function clearCategoryFilter() {
+  filterCategory.value = undefined
+  applyFilters()
 }
 
 let searchDebounce: ReturnType<typeof setTimeout> | undefined
@@ -81,23 +104,18 @@ const {
 // --- Mover variante para outro produto ---
 const showReassignModal = ref(false)
 const reassignSource = ref<ProductVariant | null>(null)
-const {
-  query: reassignQuery,
-  results: reassignResults,
-  loading: reassignSearchLoading,
-  search: searchReassignTarget,
-  clear: clearReassignSearch,
-} = useDebouncedSearch<Product>(async (query) => {
-  const { data } = await productsApi.getAll({ search: query })
-  // não faz sentido mover a variante para o mesmo produto onde já está
-  return data.filter((p) => p.id !== reassignSource.value?.productId)
-})
 const reassignTarget = ref<Product | null>(null)
 const {
   loading: reassigning,
   error: reassignError,
   run: runReassign,
 } = useAsyncAction('Erro ao mover variante')
+
+async function searchReassignTarget(query: string) {
+  const { data } = await productsApi.getAll({ search: query })
+  // não faz sentido mover a variante para o mesmo produto onde já está
+  return data.filter((p) => p.id !== reassignSource.value?.productId)
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -108,7 +126,7 @@ async function loadProducts() {
   const result = await runLoad(() =>
     productsApi.getAll({
       search: search.value || undefined,
-      category: filterCategory.value || undefined,
+      category: filterCategory.value,
       limit: PAGE_SIZE,
       offset: page.value * PAGE_SIZE,
     })
@@ -119,13 +137,8 @@ async function loadProducts() {
   }
 }
 
-function prevPage() {
-  page.value--
-  loadProducts()
-}
-
-function nextPage() {
-  page.value++
+function goToPage(newPage: number) {
+  page.value = newPage
   loadProducts()
 }
 
@@ -282,16 +295,9 @@ async function confirmDeleteVariant() {
 
 function openReassign(variant: ProductVariant) {
   reassignSource.value = variant
-  clearReassignSearch()
   reassignTarget.value = null
   reassignError.value = ''
   showReassignModal.value = true
-}
-
-function selectReassignTarget(product: Product) {
-  reassignTarget.value = product
-  reassignQuery.value = product.name
-  reassignResults.value = []
 }
 
 async function confirmReassign() {
@@ -313,123 +319,102 @@ async function confirmReassign() {
 
 <template>
   <div>
-    <div class="flex items-center justify-between mb-8">
+    <div class="mb-8 flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Produtos</h1>
-        <p class="text-gray-500 mt-1">
+        <p class="mt-1 text-gray-500">
           Gerir produtos e as suas variantes (marca/embalagem)
         </p>
       </div>
-      <button class="btn-primary" @click="openCreate">
-        <svg
-          class="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
+      <Button @click="openCreate">
+        <PlusIcon class="size-4" />
         Novo Produto
-      </button>
+      </Button>
     </div>
 
     <!-- Filters -->
-    <div class="flex flex-col sm:flex-row gap-3 mb-6">
-      <input
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row">
+      <Input
         v-model="search"
         type="text"
         placeholder="Pesquisar produto..."
-        class="input max-w-xs"
+        class="max-w-xs"
       />
-      <select
-        v-model="filterCategory"
-        class="input max-w-xs"
-        @change="applyFilters"
-      >
-        <option value="">Todas as categorias</option>
-        <option v-for="cat in categories" :key="cat" :value="cat">
-          {{ cat }}
-        </option>
-      </select>
+      <div class="flex w-full max-w-xs items-center gap-1">
+        <Select v-model="filterCategory" @update:model-value="applyFilters">
+          <SelectTrigger class="w-full">
+            <SelectValue placeholder="Todas as categorias" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="cat in categories" :key="cat" :value="cat">
+              {{ cat }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          v-if="filterCategory !== undefined"
+          variant="ghost"
+          size="icon-sm"
+          title="Limpar filtro de categoria"
+          @click="clearCategoryFilter"
+        >
+          <XIcon class="size-4" />
+        </Button>
+      </div>
     </div>
 
     <!-- Table -->
-    <div class="card overflow-hidden">
-      <div v-if="loading" class="flex items-center justify-center h-40">
-        <div
-          class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"
-        ></div>
+    <Card class="py-0">
+      <div v-if="loading" class="flex h-40 items-center justify-center">
+        <Spinner class="size-8 text-brand-600" />
       </div>
-      <div
-        v-else-if="error || deleteError"
-        class="bg-red-50 border border-red-200 rounded-lg p-4 m-6 text-red-700 text-sm"
-      >
-        {{ error || deleteError }}
-      </div>
-      <table v-else class="w-full text-sm">
-        <thead class="bg-gray-50 border-b border-gray-100">
-          <tr>
-            <th class="w-8"></th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">Nome</th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">
-              Categoria
-            </th>
-            <th class="text-right px-6 py-3 font-medium text-gray-500">
-              Variantes
-            </th>
-            <th class="text-left px-6 py-3 font-medium text-gray-500">
-              Registado por
-            </th>
-            <th class="px-6 py-3"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-          <tr v-if="products.length === 0">
-            <td colspan="6" class="text-center py-12 text-gray-400">
+      <Alert v-else-if="error || deleteError" variant="destructive" class="m-6">
+        <AlertDescription>{{ error || deleteError }}</AlertDescription>
+      </Alert>
+      <Table v-else>
+        <TableHeader>
+          <TableRow class="bg-gray-50">
+            <TableHead class="w-8" />
+            <TableHead>Nome</TableHead>
+            <TableHead>Categoria</TableHead>
+            <TableHead class="text-right">Variantes</TableHead>
+            <TableHead>Registado por</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-if="products.length === 0">
+            <TableCell colspan="6" class="py-12 text-center text-gray-400">
               Nenhum produto encontrado
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
           <template v-for="product in products" :key="product.id">
-            <tr
-              class="hover:bg-gray-50 transition-colors cursor-pointer"
-              @click="toggleExpanded(product.id)"
-            >
-              <td class="pl-6 py-4 text-gray-400">
-                <svg
-                  class="w-4 h-4 transition-transform"
+            <TableRow class="cursor-pointer" @click="toggleExpanded(product.id)">
+              <TableCell class="pl-6 text-gray-400">
+                <ChevronRightIcon
+                  class="size-4 transition-transform"
                   :class="{ 'rotate-90': expanded.has(product.id) }"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </td>
-              <td class="px-6 py-4 font-medium text-gray-900">
+                />
+              </TableCell>
+              <TableCell class="font-medium text-gray-900">
                 {{ product.name }}
-                <span v-if="product.needsReview" class="badge-yellow ml-2"
-                  >Por rever</span
+                <Badge
+                  v-if="product.needsReview"
+                  variant="outline"
+                  class="ml-2 border-yellow-200 bg-yellow-100 text-yellow-800"
                 >
-              </td>
-              <td class="px-6 py-4 text-gray-500">
+                  Por rever
+                </Badge>
+              </TableCell>
+              <TableCell class="text-gray-500">
                 {{ product.category ?? '—' }}
-              </td>
-              <td class="px-6 py-4 text-right text-gray-500">
+              </TableCell>
+              <TableCell class="text-right text-gray-500">
                 {{ product.variants?.length ?? 0 }}
-              </td>
-              <td class="px-6 py-4">
+              </TableCell>
+              <TableCell>
                 <div v-if="product.createdBy" class="text-xs">
-                  <span class="text-gray-700 font-medium">{{
+                  <span class="font-medium text-gray-700">{{
                     product.createdBy.name
                   }}</span>
                   <span
@@ -437,146 +422,115 @@ async function confirmReassign() {
                       product.updatedBy &&
                       product.updatedBy.id !== product.createdBy.id
                     "
-                    class="text-gray-400 block"
+                    class="block text-gray-400"
                   >
                     editado por {{ product.updatedBy.name }}
                   </span>
                 </div>
-                <span v-else class="text-gray-300 text-xs">—</span>
-              </td>
-              <td class="px-6 py-4" @click.stop>
+                <span v-else class="text-xs text-gray-300">—</span>
+              </TableCell>
+              <TableCell @click.stop>
                 <div class="flex items-center justify-end gap-2">
-                  <button
-                    class="btn-secondary btn-sm"
-                    @click="openEdit(product)"
-                  >
+                  <Button variant="outline" size="sm" @click="openEdit(product)">
                     Editar
-                  </button>
-                  <button
-                    class="btn-danger btn-sm"
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    data-testid="delete-product"
                     @click="openDeleteConfirm(product)"
                   >
                     Eliminar
-                  </button>
+                  </Button>
                 </div>
-              </td>
-            </tr>
-            <tr v-if="expanded.has(product.id)">
-              <td colspan="6" class="bg-gray-50 px-6 py-4">
-                <div class="flex items-center justify-between mb-3">
-                  <h3
-                    class="text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                  >
+              </TableCell>
+            </TableRow>
+            <TableRow v-if="expanded.has(product.id)">
+              <TableCell colspan="6" class="bg-gray-50">
+                <div class="mb-3 flex items-center justify-between">
+                  <h3 class="text-xs font-semibold tracking-wider text-gray-500 uppercase">
                     Variantes
                   </h3>
-                  <button
-                    class="btn-secondary btn-sm"
-                    @click="openCreateVariant(product.id)"
-                  >
+                  <Button variant="outline" size="sm" @click="openCreateVariant(product.id)">
                     Nova variante
-                  </button>
+                  </Button>
                 </div>
-                <table
+                <Table
                   v-if="product.variants && product.variants.length > 0"
-                  class="w-full text-sm bg-white rounded-lg border border-gray-100 overflow-hidden"
+                  class="rounded-lg border border-gray-100 bg-white"
                 >
-                  <thead class="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                      <th class="text-left px-4 py-2 font-medium text-gray-500">
-                        Marca
-                      </th>
-                      <th class="text-left px-4 py-2 font-medium text-gray-500">
-                        Tamanho
-                      </th>
-                      <th class="text-left px-4 py-2 font-medium text-gray-500">
-                        Unidade
-                      </th>
-                      <th
-                        class="text-right px-4 py-2 font-medium text-gray-500"
-                      >
-                        Preços
-                      </th>
-                      <th class="px-4 py-2"></th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-50">
-                    <tr v-for="variant in product.variants" :key="variant.id">
-                      <td class="px-4 py-2 text-gray-900">
+                  <TableHeader>
+                    <TableRow class="bg-gray-50">
+                      <TableHead>Marca</TableHead>
+                      <TableHead>Tamanho</TableHead>
+                      <TableHead>Unidade</TableHead>
+                      <TableHead class="text-right">Preços</TableHead>
+                      <TableHead />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow v-for="variant in product.variants" :key="variant.id">
+                      <TableCell class="text-gray-900">
                         {{ variant.brand ?? '—' }}
-                      </td>
-                      <td class="px-4 py-2 text-gray-500">
+                      </TableCell>
+                      <TableCell class="text-gray-500">
                         <span v-if="variant.packageSize == null">—</span>
                         <span v-else-if="variant.packCount"
                           >{{ variant.packCount }} ×
                           {{ variant.packageSize }}</span
                         >
                         <span v-else>{{ variant.packageSize }}</span>
-                      </td>
-                      <td class="px-4 py-2">
-                        <span class="badge-blue">{{ variant.unit }}</span>
-                      </td>
-                      <td class="px-4 py-2 text-right text-gray-500">
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" class="border-blue-200 bg-blue-100 text-blue-800">
+                          {{ variant.unit }}
+                        </Badge>
+                      </TableCell>
+                      <TableCell class="text-right text-gray-500">
                         {{ variant._count?.prices ?? 0 }}
-                      </td>
-                      <td class="px-4 py-2">
+                      </TableCell>
+                      <TableCell>
                         <div class="flex items-center justify-end gap-2">
-                          <button
-                            class="btn-secondary btn-sm"
+                          <Button
+                            variant="outline"
+                            size="sm"
                             @click="openEditVariant(product.id, variant)"
                           >
                             Editar
-                          </button>
-                          <button
-                            class="btn-secondary btn-sm"
-                            @click="openReassign(variant)"
-                          >
+                          </Button>
+                          <Button variant="outline" size="sm" @click="openReassign(variant)">
                             Mover
-                          </button>
-                          <button
-                            class="btn-danger btn-sm"
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
                             @click="openVariantDeleteConfirm(variant)"
                           >
                             Eliminar
-                          </button>
+                          </Button>
                         </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
                 <p v-else class="text-sm text-gray-400">
                   Ainda sem variantes — cria a primeira acima.
                 </p>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           </template>
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
 
-      <!-- Pagination -->
-      <div
+      <PaginationControls
         v-if="totalPages > 1"
-        class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500"
-      >
-        <span>{{ total }} produtos</span>
-        <div class="flex items-center gap-2">
-          <button
-            class="btn-secondary btn-sm"
-            :disabled="page === 0"
-            @click="prevPage"
-          >
-            Anterior
-          </button>
-          <span>{{ page + 1 }} / {{ totalPages }}</span>
-          <button
-            class="btn-secondary btn-sm"
-            :disabled="page + 1 >= totalPages"
-            @click="nextPage"
-          >
-            Seguinte
-          </button>
-        </div>
-      </div>
-    </div>
+        :page="page"
+        :total-pages="totalPages"
+        :total="total"
+        item-label="produtos"
+        @update:page="goToPage"
+      />
+    </Card>
 
     <FormDialog
       v-model="showModal"
@@ -586,24 +540,13 @@ async function confirmReassign() {
       @submit="saveProduct"
     >
       <div class="space-y-4">
-        <div>
-          <label class="label">Nome *</label>
-          <input
-            v-model="form.name"
-            type="text"
-            class="input"
-            placeholder="ex: Açúcar branco"
-          />
+        <div class="space-y-1.5">
+          <Label>Nome *</Label>
+          <Input v-model="form.name" type="text" placeholder="ex: Açúcar branco" />
         </div>
-        <div>
-          <label class="label">Categoria</label>
-          <input
-            v-model="form.category"
-            type="text"
-            list="cats"
-            class="input"
-            placeholder="ex: Mercearia"
-          />
+        <div class="space-y-1.5">
+          <Label>Categoria</Label>
+          <Input v-model="form.category" type="text" list="cats" placeholder="ex: Mercearia" />
           <datalist id="cats">
             <option v-for="cat in categories" :key="cat" :value="cat" />
           </datalist>
@@ -629,44 +572,42 @@ async function confirmReassign() {
       @submit="saveVariant"
     >
       <div class="space-y-4">
-        <div>
-          <label class="label">Marca</label>
-          <input
-            v-model="variantForm.brand"
-            type="text"
-            class="input"
-            placeholder="ex: Sidul"
-          />
+        <div class="space-y-1.5">
+          <Label>Marca</Label>
+          <Input v-model="variantForm.brand" type="text" placeholder="ex: Sidul" />
         </div>
         <div class="grid grid-cols-3 gap-4">
-          <div>
-            <label class="label">Embalagens</label>
-            <input
+          <div class="space-y-1.5">
+            <Label>Embalagens</Label>
+            <Input
               v-model="variantForm.packCount"
               type="number"
               step="1"
               min="1"
-              class="input"
               placeholder="ex: 3"
             />
           </div>
-          <div>
-            <label class="label">Tamanho</label>
-            <input
+          <div class="space-y-1.5">
+            <Label>Tamanho</Label>
+            <Input
               v-model="variantForm.packageSize"
               type="number"
               step="0.01"
-              class="input"
               placeholder="ex: 1"
             />
           </div>
-          <div>
-            <label class="label">Unidade *</label>
-            <select v-model="variantForm.unit" class="input">
-              <option v-for="unit in UNITS" :key="unit" :value="unit">
-                {{ unit }}
-              </option>
-            </select>
+          <div class="space-y-1.5">
+            <Label>Unidade *</Label>
+            <Select v-model="variantForm.unit">
+              <SelectTrigger class="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="unit in UNITS" :key="unit" :value="unit">
+                  {{ unit }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -675,15 +616,15 @@ async function confirmReassign() {
     <ConfirmDialog
       v-model="showVariantDeleteConfirm"
       title="Eliminar variante"
-      :message="`Eliminar esta variante? Todos os preços associados serão removidos.`"
+      message="Eliminar esta variante? Todos os preços associados serão removidos."
       confirm-label="Eliminar"
       :danger="true"
       :loading="deletingVariant"
       @confirm="confirmDeleteVariant"
     />
-    <p v-if="variantDeleteError" class="text-sm text-red-600 mt-2">
-      {{ variantDeleteError }}
-    </p>
+    <Alert v-if="variantDeleteError" variant="destructive" class="mt-2">
+      <AlertDescription>{{ variantDeleteError }}</AlertDescription>
+    </Alert>
 
     <FormDialog
       v-model="showReassignModal"
@@ -700,50 +641,14 @@ async function confirmReassign() {
           vai passar a pertencer a outro produto. Se o produto de origem ficar
           sem mais nenhuma variante, é eliminado automaticamente.
         </p>
-        <div class="relative">
-          <label class="label">Produto de destino</label>
-          <div class="relative">
-            <input
-              v-model="reassignQuery"
-              type="text"
-              class="input pr-9"
-              placeholder="Pesquisar produto de destino..."
-              @input="searchReassignTarget"
-            />
-            <svg
-              v-if="reassignSearchLoading"
-              class="animate-spin w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              />
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-          </div>
-          <ul
-            v-if="reassignResults.length > 0"
-            class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
-          >
-            <li
-              v-for="candidate in reassignResults"
-              :key="candidate.id"
-              class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
-              @click="selectReassignTarget(candidate)"
-            >
-              {{ candidate.name }}
-            </li>
-          </ul>
+        <div class="space-y-1.5">
+          <Label>Produto de destino</Label>
+          <ProductCombobox
+            v-model="reassignTarget"
+            :search="searchReassignTarget"
+            :item-label="(p) => p.name"
+            placeholder="Pesquisar produto de destino..."
+          />
         </div>
         <p v-if="reassignTarget" class="text-sm text-brand-700">
           Destino selecionado: <b>{{ reassignTarget.name }}</b>

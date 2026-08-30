@@ -97,7 +97,7 @@ describe('ProductsView', () => {
     await new Promise((r) => setTimeout(r, 0))
     await wrapper.vm.$nextTick()
 
-    await wrapper.find('button.btn-danger').trigger('click')
+    await wrapper.find('[data-testid="delete-product"]').trigger('click')
     await wrapper.vm.$nextTick()
     // O ConfirmDialog (shadcn-vue) renderiza via <Teleport> para o <body>.
     await flushTeleport()
@@ -123,7 +123,7 @@ describe('ProductsView', () => {
     await new Promise((r) => setTimeout(r, 0))
     await wrapper.vm.$nextTick()
 
-    await wrapper.find('button.btn-danger').trigger('click')
+    await wrapper.find('[data-testid="delete-product"]').trigger('click')
     await wrapper.vm.$nextTick()
     // O ConfirmDialog (shadcn-vue) renderiza via <Teleport> para o <body>.
     await flushTeleport()
@@ -252,13 +252,12 @@ describe('ProductsView', () => {
 
     expect(body.text()).toContain('Mover variante para outro produto')
 
-    await body
-      .find('input[placeholder="Pesquisar produto de destino..."]')
-      .setValue('Polpa')
+    await body.find('[data-testid="combobox-input"]').setValue('Polpa')
     await new Promise((r) => setTimeout(r, 320)) // aguarda o debounce de 300ms
     await wrapper.vm.$nextTick()
+    await flushTeleport()
 
-    await body.find('li').trigger('click')
+    await body.find('[data-testid="combobox-option"]').trigger('click')
     await wrapper.vm.$nextTick()
     expect(body.text()).toContain('Destino selecionado: Polpa de Tomate')
 
