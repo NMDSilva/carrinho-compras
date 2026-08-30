@@ -14,11 +14,29 @@ vi.mock('@/api', () => ({
   pricesApi: { compare: compareMock, history: historyMock },
 }))
 
-const variant = { id: 10, productId: 1, brand: null, packageSize: null, unit: 'L' }
+const variant = {
+  id: 10,
+  productId: 1,
+  brand: null,
+  packageSize: null,
+  unit: 'L',
+}
 const product = { id: 1, name: 'Leite', variants: [variant] }
+const outroProduct = { id: 2, name: 'Água', variants: [] }
 
 async function flush() {
   await new Promise((r) => setTimeout(r, 0))
+}
+
+async function searchAndSelectProduct(
+  wrapper: ReturnType<typeof mount>,
+  query: string
+) {
+  await wrapper.find('input[placeholder="Pesquisar produto…"]').setValue(query)
+  await new Promise((r) => setTimeout(r, 320)) // aguarda o debounce de 300ms
+  await wrapper.vm.$nextTick()
+  await wrapper.find('li').trigger('click')
+  await wrapper.vm.$nextTick()
 }
 
 describe('CompareView', () => {
@@ -35,9 +53,7 @@ describe('CompareView', () => {
     const wrapper = mount(CompareView)
     await flush()
 
-    await wrapper.find('select').setValue('1')
-    await flush()
-    await wrapper.vm.$nextTick()
+    await searchAndSelectProduct(wrapper, 'Leite')
 
     expect(wrapper.text()).toContain('Produto sem preços')
   })
@@ -48,13 +64,11 @@ describe('CompareView', () => {
     const wrapper = mount(CompareView)
     await flush()
 
-    await wrapper.find('select').setValue('1')
-    await flush()
-    await wrapper.vm.$nextTick()
+    await searchAndSelectProduct(wrapper, 'Leite')
 
     // segundo select só aparece depois de escolher o produto — é a variante,
     // necessária para carregar o histórico
-    await wrapper.findAll('select')[1].setValue('10')
+    await wrapper.find('select').setValue('10')
     await flush()
     await wrapper.vm.$nextTick()
 
@@ -62,21 +76,19 @@ describe('CompareView', () => {
   })
 
   it('limpa o erro anterior ao trocar de produto', async () => {
-    compareMock.mockRejectedValueOnce({ data: { error: 'Erro no primeiro produto' } })
+    compareMock.mockRejectedValueOnce({
+      data: { error: 'Erro no primeiro produto' },
+    })
     historyMock.mockResolvedValue({ product, history: [] })
     const wrapper = mount(CompareView)
     await flush()
 
-    await wrapper.find('select').setValue('1')
-    await flush()
-    await wrapper.vm.$nextTick()
+    await searchAndSelectProduct(wrapper, 'Leite')
     expect(wrapper.text()).toContain('Erro no primeiro produto')
 
-    compareMock.mockResolvedValueOnce({ product, prices: [] })
-    await wrapper.find('select').setValue('')
-    await wrapper.find('select').setValue('1')
-    await flush()
-    await wrapper.vm.$nextTick()
+    compareMock.mockResolvedValueOnce({ product: outroProduct, prices: [] })
+    getAllMock.mockResolvedValueOnce([outroProduct])
+    await searchAndSelectProduct(wrapper, 'Água')
 
     expect(wrapper.text()).not.toContain('Erro no primeiro produto')
   })

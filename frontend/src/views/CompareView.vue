@@ -2,19 +2,41 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { pricesApi, productsApi, supermarketsApi } from '@/api'
 import type { Product, Supermarket, CompareResult, PriceHistory } from '@/types'
-import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
+import {
+  useAsyncAction,
+  ASYNC_ACTION_FAILED,
+} from '@/composables/useAsyncAction'
 
-const products = ref<Product[]>([])
 const supermarkets = ref<Supermarket[]>([])
-const selectedProduct = ref<number | ''>('')
+const productQuery = ref('')
+const productResults = ref<Product[]>([])
+const selectedProductObj = ref<Product | null>(null)
 const selectedVariant = ref<number | ''>('')
 const selectedSupermarkets = ref<number[]>([])
+let productSearchDebounce: ReturnType<typeof setTimeout> | undefined
 
 // Variantes do produto selecionado — já vêm incluídas em productsApi.getAll().
 const variantsOfSelected = computed(
-  () =>
-    products.value.find((p) => p.id === selectedProduct.value)?.variants ?? []
+  () => selectedProductObj.value?.variants ?? []
 )
+
+function searchProducts() {
+  clearTimeout(productSearchDebounce)
+  productSearchDebounce = setTimeout(async () => {
+    const query = productQuery.value.trim()
+    if (!query) {
+      productResults.value = []
+      return
+    }
+    productResults.value = await productsApi.getAll({ search: query })
+  }, 300)
+}
+
+function selectProduct(product: Product) {
+  selectedProductObj.value = product
+  productQuery.value = product.name
+  productResults.value = []
+}
 
 function formatVariant(variant: {
   brand: string | null
@@ -44,16 +66,13 @@ const {
 const activeTab = ref<'compare' | 'history'>('compare')
 
 onMounted(async () => {
-  await Promise.all([
-    productsApi.getAll().then((p) => (products.value = p)),
-    supermarketsApi.getAll().then((s) => (supermarkets.value = s)),
-  ])
+  supermarkets.value = await supermarketsApi.getAll()
 })
 
 async function loadCompare() {
-  if (!selectedProduct.value) return
+  if (!selectedProductObj.value) return
   const result = await runCompare(() =>
-    pricesApi.compare(Number(selectedProduct.value))
+    pricesApi.compare(selectedProductObj.value!.id)
   )
   if (result !== ASYNC_ACTION_FAILED) compareResult.value = result
 }
@@ -69,14 +88,14 @@ async function loadHistory() {
   if (result !== ASYNC_ACTION_FAILED) historyResult.value = result
 }
 
-watch(selectedProduct, () => {
+watch(selectedProductObj, () => {
   compareResult.value = null
   historyResult.value = null
   selectedVariant.value = ''
   selectedSupermarkets.value = []
   compareError.value = ''
   historyError.value = ''
-  if (selectedProduct.value) loadCompare()
+  if (selectedProductObj.value) loadCompare()
 })
 
 watch(selectedVariant, () => {
@@ -137,16 +156,30 @@ const BG_COLORS = [
     <!-- Product selector -->
     <div class="card p-6 mb-6">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
+        <div class="relative">
           <label class="label">Produto</label>
-          <select v-model="selectedProduct" class="input">
-            <option value="">Selecionar produto…</option>
-            <option v-for="p in products" :key="p.id" :value="p.id">
+          <input
+            v-model="productQuery"
+            type="text"
+            class="input"
+            placeholder="Pesquisar produto…"
+            @input="searchProducts"
+          />
+          <ul
+            v-if="productResults.length > 0"
+            class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+          >
+            <li
+              v-for="p in productResults"
+              :key="p.id"
+              class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
+              @click="selectProduct(p)"
+            >
               {{ p.name }}
-            </option>
-          </select>
+            </li>
+          </ul>
         </div>
-        <div v-if="selectedProduct">
+        <div v-if="selectedProductObj">
           <label class="label">Variante (para o histórico)</label>
           <select v-model="selectedVariant" class="input">
             <option value="">Selecionar variante…</option>
@@ -183,7 +216,7 @@ const BG_COLORS = [
       {{ compareError || historyError }}
     </div>
 
-    <div v-if="!selectedProduct" class="card p-16 text-center text-gray-400">
+    <div v-if="!selectedProductObj" class="card p-16 text-center text-gray-400">
       <svg
         class="w-12 h-12 mx-auto mb-3 opacity-30"
         fill="none"
