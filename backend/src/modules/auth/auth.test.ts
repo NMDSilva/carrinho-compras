@@ -207,13 +207,15 @@ describe('auth routes', () => {
     expect(res.statusCode).toBe(401)
   })
 
-  it('devolve os dados do utilizador autenticado em /me', async () => {
+  it('devolve os dados do utilizador autenticado em /me, com createdAt serializado como string', async () => {
+    // O Prisma devolve sempre um Date real para DateTime (nunca uma string) —
+    // é isto que profileResponseSchema (z.string()) exige que seja serializado.
     prismaMock.user.findUnique.mockResolvedValueOnce({
       id: 1,
       name: 'Ana',
       email: 'ana@example.com',
       role: 'USER',
-      createdAt: new Date().toISOString(),
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
     } as never)
 
     const res = await app.inject({
@@ -223,7 +225,7 @@ describe('auth routes', () => {
     })
 
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toMatchObject({ id: 1, email: 'ana@example.com' })
+    expect(res.json()).toMatchObject({ id: 1, email: 'ana@example.com', createdAt: '2026-01-01T00:00:00.000Z' })
   })
 
   it('rejeita /me sem token', async () => {
@@ -248,7 +250,7 @@ describe('auth routes', () => {
         name: 'Ana Nova',
         email: 'ana@example.com',
         role: 'USER',
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       } as never)
 
       const res = await app.inject({
@@ -281,7 +283,7 @@ describe('auth routes', () => {
         name: 'Ana',
         email: 'nova@example.com',
         role: 'USER',
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       } as never)
 
       const res = await app.inject({

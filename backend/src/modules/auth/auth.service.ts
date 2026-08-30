@@ -53,12 +53,20 @@ export async function registerUser(input: { name: string; email: string; passwor
   throw new Error('unreachable')
 }
 
-export function getProfile(id: number) {
-  return prisma.user.findUnique({ where: { id }, select: profileSelect })
+// profileResponseSchema exige createdAt como string — o Prisma devolve
+// sempre um Date real para DateTime, nunca serializa sozinho.
+function serializeProfile<T extends { createdAt: Date }>(user: T) {
+  return { ...user, createdAt: user.createdAt.toISOString() }
 }
 
-export function updateProfile(id: number, data: Record<string, unknown>) {
-  return prisma.user.update({ where: { id }, data, select: profileSelect })
+export async function getProfile(id: number) {
+  const user = await prisma.user.findUnique({ where: { id }, select: profileSelect })
+  return user ? serializeProfile(user) : null
+}
+
+export async function updateProfile(id: number, data: Record<string, unknown>) {
+  const user = await prisma.user.update({ where: { id }, data, select: profileSelect })
+  return serializeProfile(user)
 }
 
 export function comparePassword(plain: string, hashed: string) {
