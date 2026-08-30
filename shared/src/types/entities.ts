@@ -121,3 +121,8 @@ export interface PaginatedPrices {
   data: PriceRecord[]
   total: number
 }
+
+export interface PaginatedProducts {
+  data: Product[]
+  total: number
+}

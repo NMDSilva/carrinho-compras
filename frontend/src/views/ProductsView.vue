@@ -1,26 +1,37 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { productsApi, variantsApi } from '@/api'
 import { useRoute, useRouter } from 'vue-router'
 import type { Product, ProductVariant } from '@/types'
 import { FormDialog, ConfirmDialog } from '@/components/dialogs'
-import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
+import {
+  useAsyncAction,
+  ASYNC_ACTION_FAILED,
+} from '@/composables/useAsyncAction'
 
 const products = ref<Product[]>([])
 const categories = ref<string[]>([])
 const search = ref('')
 const filterCategory = ref('')
 const expanded = ref<Set<number>>(new Set())
+const total = ref(0)
+const page = ref(0)
+const PAGE_SIZE = 20
 const {
   loading,
   error,
   run: runLoad,
 } = useAsyncAction('Erro ao carregar produtos', { immediate: true })
 
+function applyFilters() {
+  page.value = 0
+  loadProducts()
+}
+
 let searchDebounce: ReturnType<typeof setTimeout> | undefined
 watch(search, () => {
   clearTimeout(searchDebounce)
-  searchDebounce = setTimeout(loadProducts, 300)
+  searchDebounce = setTimeout(applyFilters, 300)
 })
 
 // --- Produto (genérico) ---
@@ -46,7 +57,12 @@ const UNITS = ['un', 'kg', 'g', 'L', 'ml', 'cx', 'pac', 'dz']
 const showVariantModal = ref(false)
 const editingVariant = ref<ProductVariant | null>(null)
 const variantProductId = ref<number | null>(null)
-const variantForm = ref({ brand: '', packageSize: '', packCount: '', unit: 'un' })
+const variantForm = ref({
+  brand: '',
+  packageSize: '',
+  packCount: '',
+  unit: 'un',
+})
 const {
   loading: savingVariant,
   error: variantFormError,
@@ -77,14 +93,31 @@ let reassignDebounce: ReturnType<typeof setTimeout> | undefined
 const route = useRoute()
 const router = useRouter()
 
+const totalPages = computed(() => Math.ceil(total.value / PAGE_SIZE))
+
 async function loadProducts() {
   const result = await runLoad(() =>
     productsApi.getAll({
       search: search.value || undefined,
       category: filterCategory.value || undefined,
+      limit: PAGE_SIZE,
+      offset: page.value * PAGE_SIZE,
     })
   )
-  if (result !== ASYNC_ACTION_FAILED) products.value = result
+  if (result !== ASYNC_ACTION_FAILED) {
+    products.value = result.data
+    total.value = result.total
+  }
+}
+
+function prevPage() {
+  page.value--
+  loadProducts()
+}
+
+function nextPage() {
+  page.value++
+  loadProducts()
 }
 
 async function loadCategories() {
@@ -95,10 +128,10 @@ onMounted(async () => {
   await Promise.all([loadProducts(), loadCategories()])
 
   if (route.params.id) {
-    const product = products.value.find((p) => p.id === Number(route.params.id))
-    if (product) {
+    try {
+      const product = await productsApi.getById(Number(route.params.id))
       openEdit(product)
-    } else {
+    } catch {
       router.replace({ name: 'products' })
     }
   }
@@ -203,7 +236,9 @@ async function saveVariant() {
       packageSize: variantForm.value.packageSize
         ? Number(variantForm.value.packageSize)
         : null,
-      packCount: variantForm.value.packCount ? Number(variantForm.value.packCount) : null,
+      packCount: variantForm.value.packCount
+        ? Number(variantForm.value.packCount)
+        : null,
       unit: variantForm.value.unit,
     }
     if (editingVariant.value) {
@@ -253,9 +288,11 @@ function searchReassignTarget() {
       reassignResults.value = []
       return
     }
-    const results = await productsApi.getAll({ search: query })
+    const { data } = await productsApi.getAll({ search: query })
     // não faz sentido mover a variante para o mesmo produto onde já está
-    reassignResults.value = results.filter((p) => p.id !== reassignSource.value?.productId)
+    reassignResults.value = data.filter(
+      (p) => p.id !== reassignSource.value?.productId
+    )
   }, 300)
 }
 
@@ -272,7 +309,9 @@ async function confirmReassign() {
   }
   const source = reassignSource.value
   const target = reassignTarget.value
-  const result = await runReassign(() => variantsApi.reassign(source.id, target.id))
+  const result = await runReassign(() =>
+    variantsApi.reassign(source.id, target.id)
+  )
   if (result !== ASYNC_ACTION_FAILED) {
     showReassignModal.value = false
     await loadProducts()
@@ -318,7 +357,7 @@ async function confirmReassign() {
       <select
         v-model="filterCategory"
         class="input max-w-xs"
-        @change="loadProducts"
+        @change="applyFilters"
       >
         <option value="">Todas as categorias</option>
         <option v-for="cat in categories" :key="cat" :value="cat">
@@ -476,7 +515,8 @@ async function confirmReassign() {
                       <td class="px-4 py-2 text-gray-500">
                         <span v-if="variant.packageSize == null">—</span>
                         <span v-else-if="variant.packCount"
-                          >{{ variant.packCount }} × {{ variant.packageSize }}</span
+                          >{{ variant.packCount }} ×
+                          {{ variant.packageSize }}</span
                         >
                         <span v-else>{{ variant.packageSize }}</span>
                       </td>
@@ -519,6 +559,31 @@ async function confirmReassign() {
           </template>
         </tbody>
       </table>
+
+      <!-- Pagination -->
+      <div
+        v-if="totalPages > 1"
+        class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500"
+      >
+        <span>{{ total }} produtos</span>
+        <div class="flex items-center gap-2">
+          <button
+            class="btn-secondary btn-sm"
+            :disabled="page === 0"
+            @click="prevPage"
+          >
+            Anterior
+          </button>
+          <span>{{ page + 1 }} / {{ totalPages }}</span>
+          <button
+            class="btn-secondary btn-sm"
+            :disabled="page + 1 >= totalPages"
+            @click="nextPage"
+          >
+            Seguinte
+          </button>
+        </div>
+      </div>
     </div>
 
     <FormDialog
@@ -639,11 +704,9 @@ async function confirmReassign() {
       <div class="space-y-4">
         <p class="text-sm text-gray-500">
           A variante
-          <b class="text-gray-900">{{
-            reassignSource?.brand ?? 'Genérico'
-          }}</b>
-          vai passar a pertencer a outro produto. Se o produto de origem
-          ficar sem mais nenhuma variante, é eliminado automaticamente.
+          <b class="text-gray-900">{{ reassignSource?.brand ?? 'Genérico' }}</b>
+          vai passar a pertencer a outro produto. Se o produto de origem ficar
+          sem mais nenhuma variante, é eliminado automaticamente.
         </p>
         <div class="relative">
           <label class="label">Produto de destino</label>

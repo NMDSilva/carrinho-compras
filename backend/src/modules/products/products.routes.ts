@@ -33,7 +33,7 @@ const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/', {
     schema: {
       tags: ['Produtos'],
-      summary: 'Listar produtos',
+      summary: 'Listar produtos com paginação',
       querystring: productQuerySchema,
     },
     handler: getProducts,

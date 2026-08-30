@@ -2,15 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import CompareView from '@/views/CompareView.vue'
 
-const { getAllMock, compareMock, historyMock } = vi.hoisted(() => ({
-  getAllMock: vi.fn().mockResolvedValue([]),
-  compareMock: vi.fn(),
-  historyMock: vi.fn(),
-}))
+const { getAllMock, supermarketsGetAllMock, compareMock, historyMock } =
+  vi.hoisted(() => ({
+    getAllMock: vi.fn().mockResolvedValue({ data: [], total: 0 }),
+    supermarketsGetAllMock: vi.fn().mockResolvedValue([]),
+    compareMock: vi.fn(),
+    historyMock: vi.fn(),
+  }))
 
 vi.mock('@/api', () => ({
   productsApi: { getAll: getAllMock },
-  supermarketsApi: { getAll: getAllMock },
+  supermarketsApi: { getAll: supermarketsGetAllMock },
   pricesApi: { compare: compareMock, history: historyMock },
 }))
 
@@ -22,7 +24,7 @@ const variant = {
   unit: 'L',
 }
 const product = { id: 1, name: 'Leite', variants: [variant] }
-const outroProduct = { id: 2, name: 'Água', variants: [] }
+const outroProduto = { id: 2, name: 'Água', variants: [] }
 
 async function flush() {
   await new Promise((r) => setTimeout(r, 0))
@@ -42,7 +44,9 @@ async function searchAndSelectProduct(
 describe('CompareView', () => {
   beforeEach(() => {
     getAllMock.mockClear()
-    getAllMock.mockResolvedValue([product])
+    getAllMock.mockResolvedValue({ data: [product], total: 1 })
+    supermarketsGetAllMock.mockClear()
+    supermarketsGetAllMock.mockResolvedValue([])
     compareMock.mockReset()
     historyMock.mockReset()
   })
@@ -86,8 +90,8 @@ describe('CompareView', () => {
     await searchAndSelectProduct(wrapper, 'Leite')
     expect(wrapper.text()).toContain('Erro no primeiro produto')
 
-    compareMock.mockResolvedValueOnce({ product: outroProduct, prices: [] })
-    getAllMock.mockResolvedValueOnce([outroProduct])
+    compareMock.mockResolvedValueOnce({ product: outroProduto, prices: [] })
+    getAllMock.mockResolvedValueOnce({ data: [outroProduto], total: 1 })
     await searchAndSelectProduct(wrapper, 'Água')
 
     expect(wrapper.text()).not.toContain('Erro no primeiro produto')

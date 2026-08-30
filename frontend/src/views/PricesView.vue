@@ -108,7 +108,9 @@ function searchFilterProducts() {
       }
       return
     }
-    filterProductResults.value = await productsApi.getAll({ search: query })
+    filterProductResults.value = (
+      await productsApi.getAll({ search: query })
+    ).data
   }, 300)
 }
 
@@ -127,7 +129,9 @@ function searchFormProducts() {
       formProductResults.value = []
       return
     }
-    formProductResults.value = await productsApi.getAll({ search: query })
+    formProductResults.value = (
+      await productsApi.getAll({ search: query })
+    ).data
   }, 300)
 }
 

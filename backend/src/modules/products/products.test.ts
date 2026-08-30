@@ -15,28 +15,70 @@ describe('products routes', () => {
     await app.close()
   })
 
-  it('lista produtos publicamente', async () => {
+  it('lista produtos publicamente com paginação', async () => {
     prismaMock.product.findMany.mockResolvedValueOnce([
-      { id: 1, name: 'Leite', category: null, needsReview: false, variants: [] } as never,
+      {
+        id: 1,
+        name: 'Leite',
+        category: null,
+        needsReview: false,
+        variants: [],
+      } as never,
     ])
+    prismaMock.product.count.mockResolvedValueOnce(1)
 
     const res = await app.inject({ method: 'GET', url: '/api/products' })
 
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toHaveLength(1)
+    expect(res.json()).toMatchObject({ total: 1 })
+    expect(res.json().data).toHaveLength(1)
+  })
+
+  it('aplica limit/offset por omissão quando não indicados', async () => {
+    prismaMock.product.findMany.mockResolvedValueOnce([])
+    prismaMock.product.count.mockResolvedValueOnce(0)
+
+    await app.inject({ method: 'GET', url: '/api/products' })
+
+    expect(prismaMock.product.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 500, skip: 0 })
+    )
+  })
+
+  it('aceita limit/offset válidos para paginar o catálogo', async () => {
+    prismaMock.product.findMany.mockResolvedValueOnce([])
+    prismaMock.product.count.mockResolvedValueOnce(0)
+
+    await app.inject({ method: 'GET', url: '/api/products?limit=20&offset=40' })
+
+    expect(prismaMock.product.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 20, skip: 40 })
+    )
   })
 
   it('filtra produtos por rever', async () => {
     prismaMock.product.findMany.mockResolvedValueOnce([
-      { id: 2, name: 'ACUCAR BR SIDUL EMB PAPEL 1KG', category: null, needsReview: true, variants: [] } as never,
+      {
+        id: 2,
+        name: 'ACUCAR BR SIDUL EMB PAPEL 1KG',
+        category: null,
+        needsReview: true,
+        variants: [],
+      } as never,
     ])
+    prismaMock.product.count.mockResolvedValueOnce(1)
 
-    const res = await app.inject({ method: 'GET', url: '/api/products?needsReview=true' })
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/products?needsReview=true',
+    })
 
     expect(res.statusCode).toBe(200)
     expect(prismaMock.product.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ AND: expect.arrayContaining([{ needsReview: true }]) }),
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([{ needsReview: true }]),
+        }),
       })
     )
   })
@@ -89,7 +131,10 @@ describe('products routes', () => {
   })
 
   it('elimina produto próprio', async () => {
-    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 1, createdById: 1 } as never)
+    prismaMock.product.findUnique.mockResolvedValueOnce({
+      id: 1,
+      createdById: 1,
+    } as never)
     prismaMock.product.delete.mockResolvedValueOnce({} as never)
 
     const res = await app.inject({
@@ -102,7 +147,10 @@ describe('products routes', () => {
   })
 
   it('rejeita eliminação de produto de outro utilizador', async () => {
-    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+    prismaMock.product.findUnique.mockResolvedValueOnce({
+      id: 1,
+      createdById: 2,
+    } as never)
 
     const res = await app.inject({
       method: 'DELETE',
@@ -114,7 +162,10 @@ describe('products routes', () => {
   })
 
   it('admin elimina produto de outro utilizador', async () => {
-    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+    prismaMock.product.findUnique.mockResolvedValueOnce({
+      id: 1,
+      createdById: 2,
+    } as never)
     prismaMock.product.delete.mockResolvedValueOnce({} as never)
 
     const res = await app.inject({
@@ -127,7 +178,10 @@ describe('products routes', () => {
   })
 
   it('rejeita atualização de produto de outro utilizador', async () => {
-    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+    prismaMock.product.findUnique.mockResolvedValueOnce({
+      id: 1,
+      createdById: 2,
+    } as never)
 
     const res = await app.inject({
       method: 'PUT',
@@ -140,8 +194,14 @@ describe('products routes', () => {
   })
 
   it('marca produto como revisto', async () => {
-    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 1, createdById: 1 } as never)
-    prismaMock.product.update.mockResolvedValueOnce({ id: 1, needsReview: false } as never)
+    prismaMock.product.findUnique.mockResolvedValueOnce({
+      id: 1,
+      createdById: 1,
+    } as never)
+    prismaMock.product.update.mockResolvedValueOnce({
+      id: 1,
+      needsReview: false,
+    } as never)
 
     const res = await app.inject({
       method: 'PATCH',
@@ -154,7 +214,10 @@ describe('products routes', () => {
   })
 
   it('rejeita marcar como revisto produto de outro utilizador', async () => {
-    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+    prismaMock.product.findUnique.mockResolvedValueOnce({
+      id: 1,
+      createdById: 2,
+    } as never)
 
     const res = await app.inject({
       method: 'PATCH',
@@ -168,10 +231,19 @@ describe('products routes', () => {
   describe('variantes', () => {
     it('lista variantes de um produto', async () => {
       prismaMock.productVariant.findMany.mockResolvedValueOnce([
-        { id: 1, productId: 1, brand: 'Sidul', packageSize: 1, unit: 'kg' } as never,
+        {
+          id: 1,
+          productId: 1,
+          brand: 'Sidul',
+          packageSize: 1,
+          unit: 'kg',
+        } as never,
       ])
 
-      const res = await app.inject({ method: 'GET', url: '/api/products/1/variants' })
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/products/1/variants',
+      })
 
       expect(res.statusCode).toBe(200)
       expect(res.json()).toHaveLength(1)
@@ -215,7 +287,10 @@ describe('products routes', () => {
     })
 
     it('rejeita atualização de variante de outro utilizador', async () => {
-      prismaMock.productVariant.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+      prismaMock.productVariant.findUnique.mockResolvedValueOnce({
+        id: 1,
+        createdById: 2,
+      } as never)
 
       const res = await app.inject({
         method: 'PUT',
@@ -228,7 +303,10 @@ describe('products routes', () => {
     })
 
     it('elimina variante própria', async () => {
-      prismaMock.productVariant.findUnique.mockResolvedValueOnce({ id: 1, createdById: 1 } as never)
+      prismaMock.productVariant.findUnique.mockResolvedValueOnce({
+        id: 1,
+        createdById: 1,
+      } as never)
       prismaMock.productVariant.delete.mockResolvedValueOnce({} as never)
 
       const res = await app.inject({
@@ -241,7 +319,10 @@ describe('products routes', () => {
     })
 
     it('rejeita reatribuição de variante de outro utilizador', async () => {
-      prismaMock.productVariant.findUnique.mockResolvedValueOnce({ id: 1, createdById: 2 } as never)
+      prismaMock.productVariant.findUnique.mockResolvedValueOnce({
+        id: 1,
+        createdById: 2,
+      } as never)
 
       const res = await app.inject({
         method: 'PATCH',
@@ -254,10 +335,22 @@ describe('products routes', () => {
     })
 
     it('reatribui variante para outro produto e elimina o placeholder de origem se ficar vazio', async () => {
-      prismaMock.productVariant.findUnique.mockResolvedValueOnce({ id: 1, createdById: 1, productId: 2 } as never)
-      prismaMock.$transaction.mockImplementationOnce((cb) => (cb as (tx: typeof prismaMock) => unknown)(prismaMock))
-      prismaMock.productVariant.findUniqueOrThrow.mockResolvedValueOnce({ id: 1, productId: 2 } as never)
-      prismaMock.productVariant.update.mockResolvedValueOnce({ id: 1, productId: 5 } as never)
+      prismaMock.productVariant.findUnique.mockResolvedValueOnce({
+        id: 1,
+        createdById: 1,
+        productId: 2,
+      } as never)
+      prismaMock.$transaction.mockImplementationOnce((cb) =>
+        (cb as (tx: typeof prismaMock) => unknown)(prismaMock)
+      )
+      prismaMock.productVariant.findUniqueOrThrow.mockResolvedValueOnce({
+        id: 1,
+        productId: 2,
+      } as never)
+      prismaMock.productVariant.update.mockResolvedValueOnce({
+        id: 1,
+        productId: 5,
+      } as never)
       prismaMock.productVariant.count.mockResolvedValueOnce(0)
       prismaMock.product.delete.mockResolvedValueOnce({} as never)
 
@@ -269,7 +362,9 @@ describe('products routes', () => {
       })
 
       expect(res.statusCode).toBe(200)
-      expect(prismaMock.product.delete).toHaveBeenCalledWith({ where: { id: 2 } })
+      expect(prismaMock.product.delete).toHaveBeenCalledWith({
+        where: { id: 2 },
+      })
     })
   })
 })

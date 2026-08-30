@@ -7,24 +7,37 @@ const variantInclude = {
   updatedBy: userSelect,
 }
 
-export function listProducts(filters: { search?: string; category?: string; needsReview?: boolean }) {
-  const { search, category, needsReview } = filters
-  return prisma.product.findMany({
-    where: {
-      AND: [
-        search ? { name: { contains: search, mode: 'insensitive' } } : {},
-        category ? { category } : {},
-        needsReview !== undefined ? { needsReview } : {},
-      ],
-    },
-    include: {
-      variants: { include: variantInclude },
-      createdBy: userSelect,
-      updatedBy: userSelect,
-    },
-    orderBy: { name: 'asc' },
-    take: 500, // sem paginação na UI — só um limite de segurança
-  })
+export function listProducts(filters: {
+  search?: string
+  category?: string
+  needsReview?: boolean
+  limit: number
+  offset: number
+}) {
+  const { search, category, needsReview, limit, offset } = filters
+  const where = {
+    AND: [
+      search
+        ? { name: { contains: search, mode: 'insensitive' as const } }
+        : {},
+      category ? { category } : {},
+      needsReview !== undefined ? { needsReview } : {},
+    ],
+  }
+  return Promise.all([
+    prisma.product.findMany({
+      where,
+      include: {
+        variants: { include: variantInclude },
+        createdBy: userSelect,
+        updatedBy: userSelect,
+      },
+      orderBy: { name: 'asc' },
+      take: limit,
+      skip: offset,
+    }),
+    prisma.product.count({ where }),
+  ])
 }
 
 export function getProductById(id: number) {
@@ -33,7 +46,11 @@ export function getProductById(id: number) {
     include: {
       variants: {
         include: {
-          prices: { include: { supermarket: true }, orderBy: { date: 'desc' }, take: 50 },
+          prices: {
+            include: { supermarket: true },
+            orderBy: { date: 'desc' },
+            take: 50,
+          },
           createdBy: userSelect,
           updatedBy: userSelect,
         },
@@ -60,7 +77,11 @@ export function createProduct(data: Record<string, unknown>, userId: number) {
   })
 }
 
-export function updateProduct(id: number, data: Record<string, unknown>, userId: number) {
+export function updateProduct(
+  id: number,
+  data: Record<string, unknown>,
+  userId: number
+) {
   return prisma.product.update({
     where: { id },
     data: { ...data, updatedById: userId },
@@ -98,21 +119,38 @@ export function getVariantById(id: number) {
     where: { id },
     include: {
       product: true,
-      prices: { include: { supermarket: true }, orderBy: { date: 'desc' }, take: 50 },
+      prices: {
+        include: { supermarket: true },
+        orderBy: { date: 'desc' },
+        take: 50,
+      },
       createdBy: userSelect,
       updatedBy: userSelect,
     },
   })
 }
 
-export function createVariant(productId: number, data: Record<string, unknown>, userId: number) {
+export function createVariant(
+  productId: number,
+  data: Record<string, unknown>,
+  userId: number
+) {
   return prisma.productVariant.create({
-    data: { ...data, productId, createdById: userId, updatedById: userId } as never,
+    data: {
+      ...data,
+      productId,
+      createdById: userId,
+      updatedById: userId,
+    } as never,
     include: variantInclude,
   })
 }
 
-export function updateVariant(id: number, data: Record<string, unknown>, userId: number) {
+export function updateVariant(
+  id: number,
+  data: Record<string, unknown>,
+  userId: number
+) {
   return prisma.productVariant.update({
     where: { id },
     data: { ...data, updatedById: userId },
@@ -128,7 +166,11 @@ export function deleteVariant(id: number) {
 // arrumação manual da fila de "produtos por rever"). Se o Product de origem
 // ficar sem variantes depois da reatribuição, é eliminado — evita
 // placeholders vazios a acumular na fila.
-export function reassignVariant(id: number, newProductId: number, userId: number) {
+export function reassignVariant(
+  id: number,
+  newProductId: number,
+  userId: number
+) {
   return prisma.$transaction(async (tx) => {
     const current = await tx.productVariant.findUniqueOrThrow({ where: { id } })
 
@@ -139,7 +181,9 @@ export function reassignVariant(id: number, newProductId: number, userId: number
     })
 
     if (current.productId !== newProductId) {
-      const remaining = await tx.productVariant.count({ where: { productId: current.productId } })
+      const remaining = await tx.productVariant.count({
+        where: { productId: current.productId },
+      })
       if (remaining === 0) {
         await tx.product.delete({ where: { id: current.productId } })
       }

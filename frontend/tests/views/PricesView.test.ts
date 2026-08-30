@@ -17,7 +17,7 @@ vi.mock('@/api', () => ({
     update: vi.fn(),
     delete: deleteMock,
   },
-  productsApi: { getAll: vi.fn().mockResolvedValue([]) },
+  productsApi: { getAll: vi.fn().mockResolvedValue({ data: [], total: 0 }) },
   supermarketsApi: { getAll: vi.fn().mockResolvedValue([]) },
 }))
 
@@ -29,7 +29,14 @@ const price = {
   quantity: 1,
   date: '2026-01-01T00:00:00.000Z',
   notes: null,
-  variant: { id: 1, productId: 1, brand: null, packageSize: null, unit: 'L', product: { id: 1, name: 'Leite' } },
+  variant: {
+    id: 1,
+    productId: 1,
+    brand: null,
+    packageSize: null,
+    unit: 'L',
+    product: { id: 1, name: 'Leite' },
+  },
   supermarket: { id: 1, name: 'Continente' },
 }
 
@@ -38,7 +45,11 @@ async function setupRouter() {
     history: createWebHistory(),
     routes: [
       { path: '/precos', name: 'prices', component: PricesView },
-      { path: '/precos/:id/editar', name: 'prices-edit', component: PricesView },
+      {
+        path: '/precos/:id/editar',
+        name: 'prices-edit',
+        component: PricesView,
+      },
     ],
   })
   router.push('/precos')

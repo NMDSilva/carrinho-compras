@@ -2,7 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { productsApi, variantsApi } from '@/api'
 import type { Product } from '@/types'
-import { useAsyncAction, ASYNC_ACTION_FAILED } from '@/composables/useAsyncAction'
+import {
+  useAsyncAction,
+  ASYNC_ACTION_FAILED,
+} from '@/composables/useAsyncAction'
 
 const products = ref<Product[]>([])
 const {
@@ -26,7 +29,7 @@ let searchDebounce: ReturnType<typeof setTimeout> | undefined
 
 async function loadProducts() {
   const result = await runLoad(() => productsApi.getAll({ needsReview: true }))
-  if (result !== ASYNC_ACTION_FAILED) products.value = result
+  if (result !== ASYNC_ACTION_FAILED) products.value = result.data
 }
 
 onMounted(loadProducts)
@@ -39,11 +42,11 @@ function searchTarget(productId: number) {
       reassignResults.value = { ...reassignResults.value, [productId]: [] }
       return
     }
-    const results = await productsApi.getAll({ search: query })
+    const { data } = await productsApi.getAll({ search: query })
     // não faz sentido reatribuir um placeholder para si próprio
     reassignResults.value = {
       ...reassignResults.value,
-      [productId]: results.filter((p) => p.id !== productId),
+      [productId]: data.filter((p) => p.id !== productId),
     }
   }, 300)
 }

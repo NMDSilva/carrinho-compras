@@ -28,7 +28,7 @@ function searchProducts() {
       productResults.value = []
       return
     }
-    productResults.value = await productsApi.getAll({ search: query })
+    productResults.value = (await productsApi.getAll({ search: query })).data
   }, 300)
 }
 

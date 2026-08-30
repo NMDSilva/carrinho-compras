@@ -18,7 +18,13 @@ const placeholder = {
   name: 'ACUCAR BR SIDUL EMB PAPEL 1KG',
   category: null,
   needsReview: true,
-  variants: [{ id: 42, productId: 7, brand: null, packageSize: null, unit: 'un' }],
+  variants: [
+    { id: 42, productId: 7, brand: null, packageSize: null, unit: 'un' },
+  ],
+}
+
+function page(data: unknown[]) {
+  return { data, total: data.length }
 }
 
 async function flush() {
@@ -43,7 +49,7 @@ describe('ReviewProductsView', () => {
   })
 
   it('lista produtos por rever com a variante placeholder', async () => {
-    getAllMock.mockResolvedValueOnce([placeholder])
+    getAllMock.mockResolvedValueOnce(page([placeholder]))
     const wrapper = mount(ReviewProductsView)
 
     await flush()
@@ -54,7 +60,7 @@ describe('ReviewProductsView', () => {
   })
 
   it('mostra mensagem quando não há produtos por rever', async () => {
-    getAllMock.mockResolvedValueOnce([])
+    getAllMock.mockResolvedValueOnce(page([]))
     const wrapper = mount(ReviewProductsView)
 
     await flush()
@@ -64,7 +70,9 @@ describe('ReviewProductsView', () => {
   })
 
   it('marca produto como revisto e recarrega a lista', async () => {
-    getAllMock.mockResolvedValueOnce([placeholder]).mockResolvedValueOnce([])
+    getAllMock
+      .mockResolvedValueOnce(page([placeholder]))
+      .mockResolvedValueOnce(page([]))
     markReviewedMock.mockResolvedValue({ ...placeholder, needsReview: false })
     const wrapper = mount(ReviewProductsView)
 
@@ -80,11 +88,17 @@ describe('ReviewProductsView', () => {
   })
 
   it('reatribui a variante para o produto pesquisado e recarrega a lista', async () => {
-    const target = { id: 3, name: 'Açúcar branco', category: 'Mercearia', needsReview: false, variants: [] }
+    const target = {
+      id: 3,
+      name: 'Açúcar branco',
+      category: 'Mercearia',
+      needsReview: false,
+      variants: [],
+    }
     getAllMock
-      .mockResolvedValueOnce([placeholder]) // carga inicial
-      .mockResolvedValueOnce([target]) // resultado da pesquisa
-      .mockResolvedValueOnce([]) // recarga após reatribuir
+      .mockResolvedValueOnce(page([placeholder])) // carga inicial
+      .mockResolvedValueOnce(page([target])) // resultado da pesquisa
+      .mockResolvedValueOnce(page([])) // recarga após reatribuir
     reassignMock.mockResolvedValue({})
     const wrapper = mount(ReviewProductsView)
 
