@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { Toaster } from '@/components/ui/sonner'
 
 const route = useRoute()
 const router = useRouter()
@@ -383,4 +384,6 @@ function logout() {
       </div>
     </main>
   </div>
+
+  <Toaster position="top-right" rich-colors />
 </template>
