@@ -7,6 +7,12 @@ Object.defineProperty(globalThis, 'localStorage', {
   configurable: true,
 })
 
+// jsdom não implementa scrollIntoView — o Listbox subjacente ao Command
+// (usado pelo ProductCombobox) chama-o ao destacar/selecionar um item.
+if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {}
+}
+
 beforeEach(() => {
   localStorage.clear()
 })
