@@ -84,6 +84,11 @@ model User {
   // via backfill na migration (grandfather) — só contas novas passam a
   // precisar de confirmar o email antes de conseguirem entrar.
   emailVerified               Boolean          @default(false)
+  // Versão das sessões: vai no payload do JWT (`tv`) e é comparada com esta
+  // coluna em cada pedido autenticado. Incrementar invalida de imediato todos
+  // os tokens já emitidos — é o que dá revogação a um esquema stateless, onde
+  // de outra forma uma password reposta não expulsava ninguém durante 7 dias.
+  tokenVersion                Int              @default(0)
   // Guarda-se o hash (SHA-256) do token, nunca o valor enviado por email —
   // mesmo com acesso à BD não dá para usar o link ainda por confirmar/repor.
   verificationTokenHash       String?          @unique

@@ -132,6 +132,36 @@ describe('admin users routes', () => {
       expect(sendVerificationEmailMock).not.toHaveBeenCalled()
     })
 
+    it('expulsa as sessões da conta quando o admin lhe muda a password', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 2,
+        email: 'rui@example.com',
+        name: 'Rui',
+      } as never)
+      prismaMock.user.update.mockResolvedValueOnce({
+        id: 2,
+        name: 'Rui',
+        email: 'rui@example.com',
+        role: 'USER',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never)
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/admin/users/2',
+        headers: authHeader(app, { sub: 1, role: 'ADMIN' }),
+        payload: { password: 'novaSenha123' },
+      })
+
+      expect(res.statusCode).toBe(200)
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ tokenVersion: { increment: 1 } }),
+        })
+      )
+    })
+
     it('rejeita mudança para um email já em uso, sem enviar verificação', async () => {
       prismaMock.user.findUnique
         .mockResolvedValueOnce({ id: 2, email: 'rui@example.com', name: 'Rui' } as never)

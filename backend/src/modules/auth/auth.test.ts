@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client'
 import { buildApp } from '../../app'
 import { prismaMock } from '../../../tests/mocks/prisma'
 import { authHeader } from '../../../tests/helpers'
+import { getTokenVersionMock } from '../../../tests/setup'
 
 const { sendVerificationEmailMock, sendPasswordResetEmailMock } = vi.hoisted(() => ({
   sendVerificationEmailMock: vi.fn().mockResolvedValue(undefined),
@@ -356,6 +357,91 @@ describe('auth routes', () => {
       expect(sendVerificationEmailMock).not.toHaveBeenCalled()
     })
 
+    // Mudar a password expulsa as outras sessões (tokenVersion), mas não a de
+    // quem está a fazer a mudança — daí o token novo na resposta.
+    it('invalida as outras sessões ao mudar a password e devolve um token novo', async () => {
+      getTokenVersionMock.mockResolvedValue(3)
+      const password = await bcrypt.hash('segredo123', 12)
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana',
+        email: 'ana@example.com',
+        password,
+        role: 'USER',
+        theme: 'light',
+        emailVerified: true,
+        tokenVersion: 3,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never)
+      prismaMock.user.update.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana',
+        email: 'ana@example.com',
+        role: 'USER',
+        theme: 'light',
+        tokenVersion: 4,
+        createdAt: new Date(),
+      } as never)
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/auth/me',
+        headers: authHeader(app, { sub: 1, role: 'USER', tv: 3 }),
+        payload: { currentPassword: 'segredo123', newPassword: 'novaSenha123' },
+      })
+
+      expect(res.statusCode).toBe(200)
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ tokenVersion: { increment: 1 } }),
+        })
+      )
+      // Token novo, já com a versão nova, para esta sessão não se auto-expulsar.
+      const token = res.json().token as string
+      expect(token).toBeTypeOf('string')
+      expect(app.jwt.verify(token)).toMatchObject({ sub: 1, tv: 4 })
+    })
+
+    it('não mexe na tokenVersion quando só muda o nome', async () => {
+      getTokenVersionMock.mockResolvedValue(3)
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana',
+        email: 'ana@example.com',
+        password: 'hashed',
+        role: 'USER',
+        emailVerified: true,
+        tokenVersion: 3,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never)
+      prismaMock.user.update.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana Nova',
+        email: 'ana@example.com',
+        role: 'USER',
+        theme: 'light',
+        tokenVersion: 3,
+        createdAt: new Date(),
+      } as never)
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/auth/me',
+        headers: authHeader(app, { sub: 1, role: 'USER', tv: 3 }),
+        payload: { name: 'Ana Nova' },
+      })
+
+      expect(res.statusCode).toBe(200)
+      expect(res.json().token).toBeUndefined()
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ tokenVersion: expect.anything() }),
+        })
+      )
+    })
+
     // O 409 revela que um email já tem conta — não pode ser alcançável por
     // quem nem sabe a password da própria conta.
     it('valida a password atual antes de revelar que o email já está em uso', async () => {
@@ -579,6 +665,11 @@ describe('auth routes', () => {
       expect(res.statusCode).toBe(200)
       expect(prismaMock.user.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ passwordResetTokenHash: null }) })
+      )
+      // É o caso que mais importa: quem repõe a password por ter perdido o
+      // controlo da conta tem de expulsar quem lá esteja.
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ tokenVersion: { increment: 1 } }) })
       )
     })
 

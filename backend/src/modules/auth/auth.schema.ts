@@ -36,6 +36,10 @@ export const profileResponseSchema = z.object({
   role: z.string(),
   theme: z.string(),
   createdAt: z.string(),
+  // Só presente na resposta do PATCH quando a password muda: a mudança
+  // invalida as sessões abertas (tokenVersion), e este é o token novo para o
+  // cliente não se expulsar a si próprio. Nunca vem no GET /me.
+  token: z.string().optional(),
 })
 
 export const messageResponseSchema = z.object({

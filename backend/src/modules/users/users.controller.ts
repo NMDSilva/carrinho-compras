@@ -51,7 +51,12 @@ export async function updateUser(
   if (data.name) updateData.name = data.name
   if (data.email) updateData.email = data.email
   if (data.role) updateData.role = data.role
-  if (data.password) updateData.password = await bcrypt.hash(data.password, 12)
+  if (data.password) {
+    updateData.password = await bcrypt.hash(data.password, 12)
+    // Um ADMIN a mudar a password de outra conta expulsa as sessões dela —
+    // é meio caminho para recuperar uma conta comprometida (ver tokenVersion).
+    updateData.tokenVersion = { increment: 1 }
+  }
   // Mesma regra do PATCH /api/auth/me: um email trocado volta a ficar por
   // confirmar. Sem isto, um endereço nunca confirmado ficava marcado como
   // confirmado e passava a receber as faturas do n8n (compras.service.ts só

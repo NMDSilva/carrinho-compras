@@ -32,7 +32,10 @@ export async function login(request: FastifyRequest, reply: FastifyReply) {
   if (!user.emailVerified) {
     return reply.status(403).send({ error: 'Confirma o teu email antes de entrar.', code: 'EMAIL_NOT_VERIFIED' })
   }
-  const token = request.server.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' })
+  const token = request.server.jwt.sign(
+    { sub: user.id, role: user.role, tv: user.tokenVersion },
+    { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' }
+  )
   return reply.send({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, theme: user.theme } })
 }
 
@@ -117,11 +120,23 @@ export async function updateMe(request: FastifyRequest, reply: FastifyReply) {
   if (emailChanged) updateData.emailVerified = false
   if (data.newPassword) {
     updateData.password = await authService.hashPassword(data.newPassword)
+    // Invalida todas as sessões abertas (ver tokenVersion no schema).
+    updateData.tokenVersion = { increment: 1 }
   }
   const updated = await authService.updateProfile(userId, updateData)
   if (emailChanged) {
     const token = await authService.setVerificationToken(userId)
     await sendVerificationEmail(updated.email, updated.name, token)
+  }
+  // Mudar a própria password expulsa as outras sessões, mas não faz sentido
+  // expulsar quem está a fazer a mudança — devolve-se um token novo, já com a
+  // tokenVersion nova, para o cliente substituir o que tem.
+  if (data.newPassword) {
+    const token = request.server.jwt.sign(
+      { sub: updated.id, role: updated.role, tv: updated.tokenVersion },
+      { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' }
+    )
+    return reply.send({ ...updated, token })
   }
   return reply.send(updated)
 }

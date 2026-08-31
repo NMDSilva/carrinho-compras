@@ -54,7 +54,13 @@ export const useAuthStore = defineStore('auth', () => {
     newPassword?: string
     theme?: Theme
   }) {
-    user.value = await authApi.updateMe(data)
+    const res = await authApi.updateMe(data)
+    // Mudar a password invalida as sessões abertas (tokenVersion no backend).
+    // A resposta traz um token novo para esta sessão não se expulsar a si
+    // própria — sem isto, o pedido seguinte levava 401.
+    if (res.token) setToken(res.token)
+    const { token: _descartado, ...perfil } = res
+    user.value = perfil
   }
 
   function logout() {

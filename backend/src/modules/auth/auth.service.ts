@@ -10,6 +10,9 @@ const profileSelect = {
   role: true,
   theme: true,
   createdAt: true,
+  // Não vai na resposta (o schema Zod filtra-a) — é preciso aqui para o
+  // controller poder emitir um token novo depois de mudar a password.
+  tokenVersion: true,
 } as const
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000 // 24h
@@ -140,6 +143,9 @@ export async function resetPasswordWithToken(rawToken: string, newPassword: stri
       password: await hashPassword(newPassword),
       passwordResetTokenHash: null,
       passwordResetTokenExpiresAt: null,
+      // Este é o caso que mais importa: quem repõe a password por ter perdido
+      // o controlo da conta tem de expulsar quem lá esteja (ver tokenVersion).
+      tokenVersion: { increment: 1 },
     },
   })
 }

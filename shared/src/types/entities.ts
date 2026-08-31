@@ -22,6 +22,12 @@ export interface AuthUser {
   email: string
   role: Role
   theme: Theme
+  /**
+   * Só vem no PATCH /auth/me quando a password muda: a mudança invalida as
+   * sessões abertas, e este é o token novo para o próprio cliente não ficar de
+   * fora. O cliente tem de o guardar. Nunca presente no GET /auth/me.
+   */
+  token?: string
 }
 
 export interface Product {
