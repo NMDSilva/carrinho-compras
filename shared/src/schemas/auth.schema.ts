@@ -17,6 +17,7 @@ export const updateMeSchema = z
     email: z.string().email().optional(),
     currentPassword: z.string().optional(),
     newPassword: z.string().min(6).optional(),
+    theme: z.enum(['light', 'dark']).optional(),
   })
   .refine((d) => !d.newPassword || !!d.currentPassword, {
     message: 'Password atual é obrigatória para definir uma nova',

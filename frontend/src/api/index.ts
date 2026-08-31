@@ -11,6 +11,7 @@ import type {
   PaginatedProducts,
   User,
   AuthUser,
+  Theme,
 } from '@/types'
 
 const api = $fetch.create({
@@ -53,6 +54,7 @@ export const authApi = {
     email?: string
     currentPassword?: string
     newPassword?: string
+    theme?: Theme
   }) => api<AuthUser>('/auth/me', { method: 'PATCH', body: data }),
   verifyEmail: (token: string) =>
     api<{ message: string }>('/auth/verify-email', {

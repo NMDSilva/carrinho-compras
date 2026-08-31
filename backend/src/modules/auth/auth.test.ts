@@ -147,6 +147,7 @@ describe('auth routes', () => {
       email: 'ana@example.com',
       password,
       role: 'USER',
+      theme: 'light',
       emailVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -215,6 +216,7 @@ describe('auth routes', () => {
       name: 'Ana',
       email: 'ana@example.com',
       role: 'USER',
+      theme: 'light',
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
     } as never)
 
@@ -250,6 +252,7 @@ describe('auth routes', () => {
         name: 'Ana Nova',
         email: 'ana@example.com',
         role: 'USER',
+        theme: 'light',
         createdAt: new Date(),
       } as never)
 
@@ -283,6 +286,7 @@ describe('auth routes', () => {
         name: 'Ana',
         email: 'nova@example.com',
         role: 'USER',
+        theme: 'light',
         createdAt: new Date(),
       } as never)
 
@@ -298,6 +302,53 @@ describe('auth routes', () => {
         expect.objectContaining({ data: expect.objectContaining({ email: 'nova@example.com', emailVerified: false }) })
       )
       expect(sendVerificationEmailMock).toHaveBeenCalledWith('nova@example.com', 'Ana', expect.any(String))
+    })
+
+    it('muda a preferência de tema', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana',
+        email: 'ana@example.com',
+        password: 'hashed',
+        role: 'USER',
+        theme: 'light',
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never)
+      prismaMock.user.update.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana',
+        email: 'ana@example.com',
+        role: 'USER',
+        theme: 'dark',
+        createdAt: new Date(),
+      } as never)
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/auth/me',
+        headers: authHeader(app, { sub: 1, role: 'USER' }),
+        payload: { theme: 'dark' },
+      })
+
+      expect(res.statusCode).toBe(200)
+      expect(res.json()).toMatchObject({ theme: 'dark' })
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ theme: 'dark' }) })
+      )
+      expect(sendVerificationEmailMock).not.toHaveBeenCalled()
+    })
+
+    it('rejeita uma preferência de tema inválida', async () => {
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/auth/me',
+        headers: authHeader(app, { sub: 1, role: 'USER' }),
+        payload: { theme: 'blue' },
+      })
+
+      expect(res.statusCode).toBe(400)
     })
 
     it('rejeita mudança para um email já em uso por outra conta, sem reenviar verificação', async () => {

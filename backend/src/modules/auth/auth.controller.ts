@@ -33,7 +33,7 @@ export async function login(request: FastifyRequest, reply: FastifyReply) {
     return reply.status(403).send({ error: 'Confirma o teu email antes de entrar.', code: 'EMAIL_NOT_VERIFIED' })
   }
   const token = request.server.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' })
-  return reply.send({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } })
+  return reply.send({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, theme: user.theme } })
 }
 
 export async function verifyEmail(request: FastifyRequest, reply: FastifyReply) {
@@ -92,6 +92,7 @@ export async function updateMe(request: FastifyRequest, reply: FastifyReply) {
   const updateData: Record<string, unknown> = {}
   if (data.name) updateData.name = data.name
   if (data.email) updateData.email = data.email
+  if (data.theme) updateData.theme = data.theme
   if (emailChanged) updateData.emailVerified = false
   if (data.newPassword) {
     const valid = await authService.comparePassword(data.currentPassword!, user.password)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   FlagIcon,
@@ -35,6 +35,19 @@ const navItems = [
 const adminItems = [
   { to: '/admin/utilizadores', label: 'Utilizadores', icon: UsersIcon },
 ]
+
+// Aplica a preferência de tema do utilizador ao <html> assim que fica
+// disponível (fetchMe(), no router guard, corre antes de qualquer rota
+// protegida renderizar — mas o próprio App.vue já está montado nesse
+// momento, por isso o tema só "salta" para o correto depois do fetch, não
+// há forma barata de evitar esse flash sem SSR/script bloqueante).
+watch(
+  () => auth.user?.theme,
+  (theme) => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  },
+  { immediate: true }
+)
 
 function logout() {
   auth.logout()

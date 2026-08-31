@@ -1,4 +1,5 @@
 export type Role = 'USER' | 'ADMIN'
+export type Theme = 'light' | 'dark'
 
 export interface UserRef {
   id: number
@@ -20,6 +21,7 @@ export interface AuthUser {
   name: string
   email: string
   role: Role
+  theme: Theme
 }
 
 export interface Product {

@@ -8,6 +8,7 @@ const profileSelect = {
   name: true,
   email: true,
   role: true,
+  theme: true,
   createdAt: true,
 } as const
 

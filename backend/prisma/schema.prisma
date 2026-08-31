@@ -77,6 +77,9 @@ model User {
   password                    String
   name                        String
   role                        String           @default("USER")
+  // Preferência de tema da UI ("light"/"dark") — String simples, mesma
+  // convenção do role, não é um enum a nível de BD.
+  theme                       String           @default("light")
   // Contas criadas antes desta funcionalidade ficam com emailVerified=true
   // via backfill na migration (grandfather) — só contas novas passam a
   // precisar de confirmar o email antes de conseguirem entrar.

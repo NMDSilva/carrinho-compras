@@ -26,6 +26,7 @@ export const userResponseSchema = z.object({
   name: z.string(),
   email: z.string(),
   role: z.string(),
+  theme: z.string(),
 })
 
 export const profileResponseSchema = z.object({
@@ -33,6 +34,7 @@ export const profileResponseSchema = z.object({
   name: z.string(),
   email: z.string(),
   role: z.string(),
+  theme: z.string(),
   createdAt: z.string(),
 })
 

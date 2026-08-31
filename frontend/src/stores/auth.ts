@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '@/api'
-import type { AuthUser } from '@carrinho/shared'
+import type { AuthUser, Theme } from '@carrinho/shared'
 import type { FetchError } from 'ofetch'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -47,7 +47,13 @@ export const useAuthStore = defineStore('auth', () => {
     await authApi.register(name, email, password)
   }
 
-  async function updateMe(data: { name?: string; email?: string; currentPassword?: string; newPassword?: string }) {
+  async function updateMe(data: {
+    name?: string
+    email?: string
+    currentPassword?: string
+    newPassword?: string
+    theme?: Theme
+  }) {
     user.value = await authApi.updateMe(data)
   }
 

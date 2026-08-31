@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { SunIcon, MoonIcon } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth'
 import { extractApiError } from '@/utils/errors'
 import { useToast } from '@/composables/useToast'
+import type { Theme } from '@carrinho/shared'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -13,6 +15,22 @@ import { Spinner } from '@/components/ui/spinner'
 
 const auth = useAuthStore()
 const toast = useToast()
+
+// --- Secção de aparência ---
+const themeLoading = ref(false)
+
+async function setTheme(theme: Theme) {
+  if (auth.user?.theme === theme || themeLoading.value) return
+  themeLoading.value = true
+  try {
+    await auth.updateMe({ theme })
+    toast.success(theme === 'dark' ? 'Tema escuro ativado' : 'Tema claro ativado')
+  } catch (e: unknown) {
+    toast.error(extractApiError(e, 'Erro ao mudar o tema'))
+  } finally {
+    themeLoading.value = false
+  }
+}
 
 // --- Secção de informação pessoal ---
 const infoForm = ref({ name: auth.user?.name ?? '', email: auth.user?.email ?? '' })
@@ -95,6 +113,32 @@ async function savePassword() {
         >
           {{ auth.isAdmin ? 'Administrador' : 'Utilizador' }}
         </Badge>
+      </div>
+    </Card>
+
+    <!-- Aparência -->
+    <Card class="mb-6 p-6">
+      <h2 class="mb-1 text-base font-semibold text-gray-900">Aparência</h2>
+      <p class="mb-4 text-sm text-gray-500">Escolhe como a aplicação aparece para ti.</p>
+      <div class="inline-flex rounded-lg border border-gray-200 p-1">
+        <Button
+          :variant="auth.user?.theme === 'dark' ? 'ghost' : 'default'"
+          size="sm"
+          :disabled="themeLoading"
+          @click="setTheme('light')"
+        >
+          <SunIcon class="size-4" />
+          Claro
+        </Button>
+        <Button
+          :variant="auth.user?.theme === 'dark' ? 'default' : 'ghost'"
+          size="sm"
+          :disabled="themeLoading"
+          @click="setTheme('dark')"
+        >
+          <MoonIcon class="size-4" />
+          Escuro
+        </Button>
       </div>
     </Card>
 
