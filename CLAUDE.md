@@ -143,10 +143,15 @@ Push para o branch `staging` dispara `.github/workflows/deploy-staging.yml` — 
 
 Ter os dois ambientes na mesma VM significa dois processos Node em simultâneo — vale a pena confirmar a folga de memória (`free -h`) antes de ligar o staging, sobretudo porque o `npm ci` do deploy já corre com `--max-old-space-size=512`.
 
-**Setup manual necessário (ainda não feito por CI) — por esta ordem:**
-1. **Primeiro** adicionar o secret `ENV_FILE_STAGING` no GitHub (Settings → Secrets and variables → Actions), com o conteúdo de um `.env` completo: as mesmas variáveis que `ENV_FILE`, mudando `PORT` para `3001` e `DATABASE_URL` para apontar a `carrinho_compras_staging` em vez de `carrinho_compras` (mesmo host, porta e credenciais — só muda o nome da BD). Convém também um `JWT_SECRET` diferente do de produção, para uma sessão de staging não valer em produção.
-2. **Só depois** criar o branch (`git checkout -b staging && git push -u origin staging`). A ordem importa: o push dispara logo o workflow, e sem o secret o `.env` na VM fica vazio — o processo pm2 `carrinho-compras-staging` arranca sem `DATABASE_URL`, morre, e fica registado no `pm2 save`. Não afeta produção (o `pm2 delete all` só existe no deploy de produção), mas obriga a limpar à mão.
-3. Para aceder à app de staging: por omissão só fica acessível na VM (`curl localhost:3001/api/health`) ou via túnel SSH (`ssh -L 3001:localhost:3001 <user>@<host>`) — não há vhost nginx automático. Se quiseres um URL público, cria um `server` block extra no nginx da VM a apontar para a porta de staging e para `~/carrinho-compras-staging/frontend/dist` — ver a secção "nginx (VM)" acima, incluindo o aviso de nunca substituir o ficheiro de config por inteiro.
+**Estado (31/08/2026)**: o secret `ENV_FILE_STAGING` está criado, o branch `staging` existe e o primeiro deploy correu bem — a base de dados `carrinho_compras_staging` foi criada e todas as migrations aplicadas de raiz, sem tocar em produção. A ordem importa e foi esta: **primeiro o secret, só depois o branch**; ao contrário, o push dispara o workflow, o `.env` na VM fica vazio e o processo pm2 arranca sem `DATABASE_URL` e morre (não afeta produção, mas obriga a limpar à mão).
+
+**Como aceder**: o backend responde em `localhost:3001` na VM (`curl localhost:3001/api/health`), ou via túnel SSH (`ssh -L 3001:localhost:3001 <user>@<host>`). Atenção: **o túnel só dá acesso à API**. O workflow builda o frontend para `~/carrinho-compras-staging/frontend/dist`, mas sem um vhost nginx nada serve esses ficheiros — sem vhost, o staging é testável com `curl` e não utilizável como aplicação.
+
+**Por fazer — vhost para `staging.carrinhodecompras.pt`** (opcional, só se quiseres clicar na app):
+1. DNS na Cloudflare: registo `staging`, CNAME para `carrinhodecompras.pt`, proxy ligado.
+2. Criar `/etc/nginx/sites-available/carrinho-compras-staging` como **ficheiro novo** (nunca editar o de produção — ver secção "nginx (VM)"), com `root` em `~/carrinho-compras-staging/frontend/dist`, proxy de `/api/` para `localhost:3001`, os mesmos cabeçalhos de segurança da produção e `X-Robots-Tag: noindex` para o staging não ser indexado. Ligar com `ln -s` para `sites-enabled/`, depois `nginx -t` e `systemctl reload nginx`.
+3. Se o SSL/TLS da Cloudflare estiver em **Full (strict)**, expandir o certificado da origem, que hoje só cobre `carrinhodecompras.pt` e `www.`: `sudo certbot --nginx -d carrinhodecompras.pt -d www.carrinhodecompras.pt -d staging.carrinhodecompras.pt`. Em **Full** simples não é preciso. O certbot acrescenta o bloco 443 ao ficheiro do staging sem mexer no de produção.
+4. `FRONTEND_URL` no `ENV_FILE_STAGING` deve ser `https://staging.carrinhodecompras.pt` — só afeta os links dos emails de verificação/reposição.
 
 ## Tarefas em aberto / dívida técnica conhecida
 
