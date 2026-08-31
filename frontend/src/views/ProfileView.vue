@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { SunIcon, MoonIcon } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth'
 import { extractApiError } from '@/utils/errors'
@@ -34,18 +34,34 @@ async function setTheme(theme: Theme) {
 
 // --- Secção de informação pessoal ---
 const infoForm = ref({ name: auth.user?.name ?? '', email: auth.user?.email ?? '' })
+const infoPassword = ref('')
 const infoLoading = ref(false)
 const infoError = ref('')
+
+// Mudar o email exige a password atual (o backend responde 400 sem ela) — o
+// campo só aparece quando o email escrito difere do atual.
+const emailChanged = computed(
+  () => !!auth.user && infoForm.value.email.trim() !== auth.user.email
+)
 
 watch(() => auth.user, (u) => {
   if (u) { infoForm.value.name = u.name; infoForm.value.email = u.email }
 })
 
 async function saveInfo() {
+  if (emailChanged.value && !infoPassword.value) {
+    infoError.value = 'Introduz a password atual para mudares o email'
+    return
+  }
   infoLoading.value = true
   infoError.value = ''
   try {
-    await auth.updateMe({ name: infoForm.value.name, email: infoForm.value.email })
+    await auth.updateMe({
+      name: infoForm.value.name,
+      email: infoForm.value.email,
+      ...(emailChanged.value ? { currentPassword: infoPassword.value } : {}),
+    })
+    infoPassword.value = ''
     toast.success('Informações guardadas com sucesso')
   } catch (e: unknown) {
     infoError.value = extractApiError(e, 'Erro ao guardar alterações')
@@ -154,6 +170,21 @@ async function savePassword() {
         <div class="space-y-1.5">
           <Label>Email</Label>
           <Input v-model="infoForm.email" type="email" />
+        </div>
+        <div v-if="emailChanged" class="space-y-1.5">
+          <Label>Password atual</Label>
+          <Input
+            v-model="infoPassword"
+            type="password"
+            autocomplete="current-password"
+            placeholder="••••••••"
+            data-testid="info-current-password"
+          />
+          <p class="text-xs text-muted-foreground">
+            Necessária para confirmar que és tu a mudar o email. Vais receber um link de
+            confirmação no endereço novo e só consegues voltar a entrar depois de o
+            clicares.
+          </p>
         </div>
       </div>
 

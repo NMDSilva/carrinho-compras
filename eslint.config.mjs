@@ -30,7 +30,9 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/**/*.{ts,vue}'],
+    // Inclui `.js` por causa de `frontend/public/` (ex: analytics.js), servido
+    // tal e qual ao browser — corre no browser, não em Node.
+    files: ['frontend/**/*.{js,ts,vue}'],
     languageOptions: {
       globals: globals.browser,
       parserOptions: {

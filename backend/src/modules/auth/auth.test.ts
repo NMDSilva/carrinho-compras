@@ -269,12 +269,13 @@ describe('auth routes', () => {
     })
 
     it('repõe emailVerified e reenvia a verificação quando o email muda', async () => {
+      const password = await bcrypt.hash('segredo123', 12)
       prismaMock.user.findUnique
         .mockResolvedValueOnce({
           id: 1,
           name: 'Ana',
           email: 'ana@example.com',
-          password: 'hashed',
+          password,
           role: 'USER',
           emailVerified: true,
           createdAt: new Date(),
@@ -294,7 +295,7 @@ describe('auth routes', () => {
         method: 'PATCH',
         url: '/api/auth/me',
         headers: authHeader(app, { sub: 1, role: 'USER' }),
-        payload: { email: 'nova@example.com' },
+        payload: { email: 'nova@example.com', currentPassword: 'segredo123' },
       })
 
       expect(res.statusCode).toBe(200)
@@ -302,6 +303,83 @@ describe('auth routes', () => {
         expect.objectContaining({ data: expect.objectContaining({ email: 'nova@example.com', emailVerified: false }) })
       )
       expect(sendVerificationEmailMock).toHaveBeenCalledWith('nova@example.com', 'Ana', expect.any(String))
+    })
+
+    // Sem esta exigência, quem apanhasse um JWT válido podia trocar o email
+    // para um seu e tomar a conta via /forgot-password (AUDITORIA.md 31/08/2026).
+    it('rejeita mudar o email sem a password atual', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana',
+        email: 'ana@example.com',
+        password: 'hashed',
+        role: 'USER',
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never)
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/auth/me',
+        headers: authHeader(app, { sub: 1, role: 'USER' }),
+        payload: { email: 'nova@example.com' },
+      })
+
+      expect(res.statusCode).toBe(400)
+      expect(prismaMock.user.update).not.toHaveBeenCalled()
+      expect(sendVerificationEmailMock).not.toHaveBeenCalled()
+    })
+
+    it('rejeita mudar o email com a password atual errada', async () => {
+      const password = await bcrypt.hash('segredo123', 12)
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana',
+        email: 'ana@example.com',
+        password,
+        role: 'USER',
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never)
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/auth/me',
+        headers: authHeader(app, { sub: 1, role: 'USER' }),
+        payload: { email: 'nova@example.com', currentPassword: 'errada' },
+      })
+
+      expect(res.statusCode).toBe(400)
+      expect(prismaMock.user.update).not.toHaveBeenCalled()
+      expect(sendVerificationEmailMock).not.toHaveBeenCalled()
+    })
+
+    // O 409 revela que um email já tem conta — não pode ser alcançável por
+    // quem nem sabe a password da própria conta.
+    it('valida a password atual antes de revelar que o email já está em uso', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 1,
+        name: 'Ana',
+        email: 'ana@example.com',
+        password: await bcrypt.hash('segredo123', 12),
+        role: 'USER',
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never)
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/auth/me',
+        headers: authHeader(app, { sub: 1, role: 'USER' }),
+        payload: { email: 'ocupado@example.com', currentPassword: 'errada' },
+      })
+
+      expect(res.statusCode).toBe(400)
+      // Nem sequer chegou a consultar se o email está ocupado.
+      expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1)
     })
 
     it('muda a preferência de tema', async () => {
@@ -352,12 +430,13 @@ describe('auth routes', () => {
     })
 
     it('rejeita mudança para um email já em uso por outra conta, sem reenviar verificação', async () => {
+      const password = await bcrypt.hash('segredo123', 12)
       prismaMock.user.findUnique
         .mockResolvedValueOnce({
           id: 1,
           name: 'Ana',
           email: 'ana@example.com',
-          password: 'hashed',
+          password,
           role: 'USER',
           emailVerified: true,
           createdAt: new Date(),
@@ -369,7 +448,7 @@ describe('auth routes', () => {
         method: 'PATCH',
         url: '/api/auth/me',
         headers: authHeader(app, { sub: 1, role: 'USER' }),
-        payload: { email: 'ocupado@example.com' },
+        payload: { email: 'ocupado@example.com', currentPassword: 'segredo123' },
       })
 
       expect(res.statusCode).toBe(409)

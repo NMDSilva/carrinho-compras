@@ -1,6 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import bcrypt from 'bcryptjs'
 import { getAuthUser } from '../../shared/middleware/auth.middleware'
+import { sendVerificationEmail } from '../../shared/lib/email'
+import * as authService from '../auth/auth.service'
 import { updateUserSchema } from './users.schema'
 import * as usersService from './users.service'
 
@@ -38,8 +40,10 @@ export async function updateUser(
   if (!existing)
     return reply.status(404).send({ error: 'Utilizador não encontrado' })
 
-  if (data.email && data.email !== existing.email) {
-    const emailTaken = await usersService.findUserByEmail(data.email)
+  const emailChanged = Boolean(data.email && data.email !== existing.email)
+
+  if (emailChanged) {
+    const emailTaken = await usersService.findUserByEmail(data.email!)
     if (emailTaken) return reply.status(409).send({ error: 'Email já em uso' })
   }
 
@@ -48,8 +52,19 @@ export async function updateUser(
   if (data.email) updateData.email = data.email
   if (data.role) updateData.role = data.role
   if (data.password) updateData.password = await bcrypt.hash(data.password, 12)
+  // Mesma regra do PATCH /api/auth/me: um email trocado volta a ficar por
+  // confirmar. Sem isto, um endereço nunca confirmado ficava marcado como
+  // confirmado e passava a receber as faturas do n8n (compras.service.ts só
+  // associa a fatura a contas com emailVerified: true).
+  if (emailChanged) updateData.emailVerified = false
 
   const user = await usersService.updateUser(id, updateData)
+
+  if (emailChanged) {
+    const token = await authService.setVerificationToken(id)
+    await sendVerificationEmail(user.email, user.name, token)
+  }
+
   return reply.send(user)
 }
 

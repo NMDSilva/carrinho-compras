@@ -84,19 +84,38 @@ export async function updateMe(request: FastifyRequest, reply: FastifyReply) {
   const data = updateMeSchema.parse(request.body)
   const user = await authService.findUserById(userId)
   if (!user) return reply.status(404).send({ error: 'Utilizador não encontrado' })
-  if (data.email && data.email !== user.email) {
-    const taken = await authService.findUserByEmail(data.email)
+
+  const emailChanged = Boolean(data.email && data.email !== user.email)
+
+  // Mudar o email exige a password atual, tal como mudar a password. Sem isto,
+  // quem apanhasse um JWT válido (ex: XSS) podia trocar o email para um seu e
+  // depois usar /forgot-password nesse endereço para tomar a conta — o
+  // emailVerified: false abaixo não trava, porque a reposição de password não
+  // exige email confirmado. O `newPassword` já tinha esta exigência via
+  // updateMeSchema.refine, que não consegue cobrir este caso por não saber
+  // qual é o email atual.
+  if (emailChanged && !data.currentPassword) {
+    return reply.status(400).send({ error: 'Password atual é obrigatória para mudar o email' })
+  }
+  // Verificada uma só vez, mesmo que o pedido mude email e password ao mesmo tempo.
+  if (data.currentPassword && (emailChanged || data.newPassword)) {
+    const valid = await authService.comparePassword(data.currentPassword, user.password)
+    if (!valid) return reply.status(400).send({ error: 'Password atual incorreta' })
+  }
+
+  // Só depois de validada a password — o 409 abaixo revela que um email já tem
+  // conta, e não vale a pena expô-lo a quem nem sabe a password da própria.
+  if (emailChanged) {
+    const taken = await authService.findUserByEmail(data.email!)
     if (taken) return reply.status(409).send({ error: 'Email já em uso' })
   }
-  const emailChanged = Boolean(data.email && data.email !== user.email)
+
   const updateData: Record<string, unknown> = {}
   if (data.name) updateData.name = data.name
   if (data.email) updateData.email = data.email
   if (data.theme) updateData.theme = data.theme
   if (emailChanged) updateData.emailVerified = false
   if (data.newPassword) {
-    const valid = await authService.comparePassword(data.currentPassword!, user.password)
-    if (!valid) return reply.status(400).send({ error: 'Password atual incorreta' })
     updateData.password = await authService.hashPassword(data.newPassword)
   }
   const updated = await authService.updateProfile(userId, updateData)
