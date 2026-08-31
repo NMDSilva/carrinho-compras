@@ -22,23 +22,32 @@ import {
 
 const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/dashboard', {
-    schema: { tags: ['Preços'], summary: 'Estatísticas do dashboard' },
+    onRequest: [requireAuth],
+    schema: {
+      tags: ['Preços'],
+      summary: 'Estatísticas do dashboard',
+      security: [{ bearerAuth: [] }],
+    },
     handler: getDashboardStats,
   })
 
   fastify.get('/compare/:productId', {
+    onRequest: [requireAuth],
     schema: {
       tags: ['Preços'],
       summary: 'Comparar preços de um produto entre supermercados',
+      security: [{ bearerAuth: [] }],
       params: productIdParamSchema,
     },
     handler: compareProductPrices,
   })
 
   fastify.get('/history/:variantId', {
+    onRequest: [requireAuth],
     schema: {
       tags: ['Preços'],
       summary: 'Histórico de preços de uma variante',
+      security: [{ bearerAuth: [] }],
       params: variantIdParamSchema,
       querystring: priceHistoryQuerySchema,
     },
@@ -46,18 +55,22 @@ const pricesRoutes: FastifyPluginAsyncZod = async (fastify) => {
   })
 
   fastify.get('/', {
+    onRequest: [requireAuth],
     schema: {
       tags: ['Preços'],
       summary: 'Listar preços com paginação',
+      security: [{ bearerAuth: [] }],
       querystring: priceListQuerySchema,
     },
     handler: getPrices,
   })
 
   fastify.get('/:id', {
+    onRequest: [requireAuth],
     schema: {
       tags: ['Preços'],
       summary: 'Obter preço por ID',
+      security: [{ bearerAuth: [] }],
       params: priceIdParamSchema,
     },
     handler: getPriceById,

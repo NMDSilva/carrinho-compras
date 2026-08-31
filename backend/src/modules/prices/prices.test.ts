@@ -19,7 +19,7 @@ describe('prices routes', () => {
     prismaMock.priceRecord.findMany.mockResolvedValueOnce([])
     prismaMock.priceRecord.count.mockResolvedValueOnce(0)
 
-    const res = await app.inject({ method: 'GET', url: '/api/prices' })
+    const res = await app.inject({ method: 'GET', url: '/api/prices', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(res.statusCode).toBe(200)
     expect(res.json()).toMatchObject({ data: [], total: 0 })
@@ -29,7 +29,7 @@ describe('prices routes', () => {
     prismaMock.priceRecord.findMany.mockResolvedValueOnce([])
     prismaMock.priceRecord.count.mockResolvedValueOnce(0)
 
-    await app.inject({ method: 'GET', url: '/api/prices' })
+    await app.inject({ method: 'GET', url: '/api/prices', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(prismaMock.priceRecord.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ take: 20, skip: 0 })
@@ -37,17 +37,17 @@ describe('prices routes', () => {
   })
 
   it('rejeita limit acima do máximo permitido', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/prices?limit=99999' })
+    const res = await app.inject({ method: 'GET', url: '/api/prices?limit=99999', headers: authHeader(app, { sub: 1, role: 'USER' }) })
     expect(res.statusCode).toBe(400)
   })
 
   it('rejeita limit que não seja um número', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/prices?limit=abc' })
+    const res = await app.inject({ method: 'GET', url: '/api/prices?limit=abc', headers: authHeader(app, { sub: 1, role: 'USER' }) })
     expect(res.statusCode).toBe(400)
   })
 
   it('rejeita offset negativo', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/prices?offset=-5' })
+    const res = await app.inject({ method: 'GET', url: '/api/prices?offset=-5', headers: authHeader(app, { sub: 1, role: 'USER' }) })
     expect(res.statusCode).toBe(400)
   })
 
@@ -55,7 +55,7 @@ describe('prices routes', () => {
     prismaMock.priceRecord.findMany.mockResolvedValueOnce([])
     prismaMock.priceRecord.count.mockResolvedValueOnce(0)
 
-    const res = await app.inject({ method: 'GET', url: '/api/prices?limit=50&offset=10' })
+    const res = await app.inject({ method: 'GET', url: '/api/prices?limit=50&offset=10', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(res.statusCode).toBe(200)
     expect(prismaMock.priceRecord.findMany).toHaveBeenCalledWith(
@@ -66,7 +66,7 @@ describe('prices routes', () => {
   it('devolve 404 para preço inexistente', async () => {
     prismaMock.priceRecord.findUnique.mockResolvedValueOnce(null)
 
-    const res = await app.inject({ method: 'GET', url: '/api/prices/999' })
+    const res = await app.inject({ method: 'GET', url: '/api/prices/999', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(res.statusCode).toBe(404)
   })
@@ -115,7 +115,7 @@ describe('prices routes', () => {
     prismaMock.product.findUnique.mockResolvedValueOnce({ id: 1, name: 'Leite' } as never)
     prismaMock.priceRecord.findMany.mockResolvedValueOnce([])
 
-    const res = await app.inject({ method: 'GET', url: '/api/prices/compare/1' })
+    const res = await app.inject({ method: 'GET', url: '/api/prices/compare/1', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(res.statusCode).toBe(200)
     expect(res.json()).toMatchObject({ prices: [] })
@@ -166,9 +166,24 @@ describe('prices routes', () => {
     prismaMock.priceRecord.findMany.mockResolvedValueOnce([])
     prismaMock.$queryRaw.mockResolvedValueOnce([])
 
-    const res = await app.inject({ method: 'GET', url: '/api/prices/dashboard' })
+    const res = await app.inject({ method: 'GET', url: '/api/prices/dashboard', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(res.statusCode).toBe(200)
     expect(res.json().stats).toMatchObject({ totalProducts: 2, totalSupermarkets: 1, totalPrices: 3 })
+  })
+
+  // As leituras eram públicas até 31/08/2026 — expunham o dataset todo e os
+  // nomes reais em createdBy a quem não estivesse autenticado (AUDITORIA.md).
+  describe.each([
+    '/api/prices',
+    '/api/prices/1',
+    '/api/prices/dashboard',
+    '/api/prices/compare/1',
+    '/api/prices/history/1',
+  ])(`leitura protegida: %s`, (url) => {
+    it(`responde 401 sem token`, async () => {
+      const res = await app.inject({ method: 'GET', url })
+      expect(res.statusCode).toBe(401)
+    })
   })
 })

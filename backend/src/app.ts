@@ -13,6 +13,7 @@ import {
 import { ZodError } from 'zod'
 import { Prisma } from '@prisma/client'
 
+import prisma from './shared/lib/prisma'
 import authRoutes from './modules/auth/auth.routes'
 import usersRoutes from './modules/users/users.routes'
 import comprasRoutes from './modules/compras/compras.routes'
@@ -138,10 +139,27 @@ export async function buildApp() {
     }
   )
 
-  app.get('/api/health', async () => ({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-  }))
+  // Público de propósito — é o healthcheck do deploy e da monitorização.
+  // Toca mesmo na base de dados: antes devolvia um objeto estático, por isso
+  // uma app de pé mas sem ligação à BD (ex: password errada no .env) passava o
+  // gate do deploy e ficava inútil em silêncio (AUDITORIA.md, 31/08/2026).
+  app.get('/api/health', async (request, reply) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`
+    } catch (err) {
+      request.log.error({ err }, 'healthcheck: base de dados inacessível')
+      return reply.status(503).send({
+        status: 'error',
+        database: 'unreachable',
+        timestamp: new Date().toISOString(),
+      })
+    }
+    return {
+      status: 'ok',
+      database: 'ok',
+      timestamp: new Date().toISOString(),
+    }
+  })
 
   await app.register(authRoutes, { prefix: '/api/auth' })
   await app.register(usersRoutes, { prefix: '/api/admin' })

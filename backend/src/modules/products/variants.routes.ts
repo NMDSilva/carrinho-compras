@@ -8,9 +8,11 @@ import { variantIdParamSchema, variantBodySchema, variantReassignSchema } from '
 // variante por id.
 const variantsRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/:id', {
+    onRequest: [requireAuth],
     schema: {
       tags: ['Produtos'],
       summary: 'Detalhes de uma variante',
+      security: [{ bearerAuth: [] }],
       params: variantIdParamSchema,
     },
     handler: getVariant,

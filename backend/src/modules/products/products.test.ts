@@ -15,7 +15,7 @@ describe('products routes', () => {
     await app.close()
   })
 
-  it('lista produtos publicamente com paginação', async () => {
+  it('lista produtos com paginação', async () => {
     prismaMock.product.findMany.mockResolvedValueOnce([
       {
         id: 1,
@@ -27,7 +27,7 @@ describe('products routes', () => {
     ])
     prismaMock.product.count.mockResolvedValueOnce(1)
 
-    const res = await app.inject({ method: 'GET', url: '/api/products' })
+    const res = await app.inject({ method: 'GET', url: '/api/products', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(res.statusCode).toBe(200)
     expect(res.json()).toMatchObject({ total: 1 })
@@ -38,7 +38,7 @@ describe('products routes', () => {
     prismaMock.product.findMany.mockResolvedValueOnce([])
     prismaMock.product.count.mockResolvedValueOnce(0)
 
-    await app.inject({ method: 'GET', url: '/api/products' })
+    await app.inject({ method: 'GET', url: '/api/products', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(prismaMock.product.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ take: 500, skip: 0 })
@@ -49,7 +49,7 @@ describe('products routes', () => {
     prismaMock.product.findMany.mockResolvedValueOnce([])
     prismaMock.product.count.mockResolvedValueOnce(0)
 
-    await app.inject({ method: 'GET', url: '/api/products?limit=20&offset=40' })
+    await app.inject({ method: 'GET', url: '/api/products?limit=20&offset=40', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(prismaMock.product.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ take: 20, skip: 40 })
@@ -71,6 +71,7 @@ describe('products routes', () => {
     const res = await app.inject({
       method: 'GET',
       url: '/api/products?needsReview=true',
+      headers: authHeader(app, { sub: 1, role: 'USER' }),
     })
 
     expect(res.statusCode).toBe(200)
@@ -86,7 +87,7 @@ describe('products routes', () => {
   it('devolve 404 para produto inexistente', async () => {
     prismaMock.product.findUnique.mockResolvedValueOnce(null)
 
-    const res = await app.inject({ method: 'GET', url: '/api/products/999' })
+    const res = await app.inject({ method: 'GET', url: '/api/products/999', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(res.statusCode).toBe(404)
   })
@@ -243,6 +244,7 @@ describe('products routes', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/products/1/variants',
+        headers: authHeader(app, { sub: 1, role: 'USER' }),
       })
 
       expect(res.statusCode).toBe(200)
@@ -281,7 +283,7 @@ describe('products routes', () => {
     it('devolve 404 para variante inexistente', async () => {
       prismaMock.productVariant.findUnique.mockResolvedValueOnce(null)
 
-      const res = await app.inject({ method: 'GET', url: '/api/variants/999' })
+      const res = await app.inject({ method: 'GET', url: '/api/variants/999', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
       expect(res.statusCode).toBe(404)
     })
@@ -365,6 +367,20 @@ describe('products routes', () => {
       expect(prismaMock.product.delete).toHaveBeenCalledWith({
         where: { id: 2 },
       })
+    })
+  })
+
+  // As leituras eram públicas até 31/08/2026 — expunham o dataset todo e os
+  // nomes reais em createdBy a quem não estivesse autenticado (AUDITORIA.md).
+  describe.each([
+    '/api/products',
+    '/api/products/categories',
+    '/api/products/1',
+    '/api/products/1/variants',
+  ])(`leitura protegida: %s`, (url) => {
+    it(`responde 401 sem token`, async () => {
+      const res = await app.inject({ method: 'GET', url })
+      expect(res.statusCode).toBe(401)
     })
   })
 })

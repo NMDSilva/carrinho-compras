@@ -22,27 +22,33 @@ import {
 
 const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/categories', {
+    onRequest: [requireAuth],
     schema: {
       tags: ['Produtos'],
       summary: 'Listar categorias',
+      security: [{ bearerAuth: [] }],
       response: { 200: z.array(z.string()) },
     },
     handler: getCategories,
   })
 
   fastify.get('/', {
+    onRequest: [requireAuth],
     schema: {
       tags: ['Produtos'],
       summary: 'Listar produtos com paginação',
+      security: [{ bearerAuth: [] }],
       querystring: productQuerySchema,
     },
     handler: getProducts,
   })
 
   fastify.get('/:id', {
+    onRequest: [requireAuth],
     schema: {
       tags: ['Produtos'],
       summary: 'Detalhes de um produto',
+      security: [{ bearerAuth: [] }],
       params: productIdParamSchema,
     },
     handler: getProduct,
@@ -94,9 +100,11 @@ const productsRoutes: FastifyPluginAsyncZod = async (fastify) => {
   })
 
   fastify.get('/:productId/variants', {
+    onRequest: [requireAuth],
     schema: {
       tags: ['Produtos'],
       summary: 'Listar variantes de um produto',
+      security: [{ bearerAuth: [] }],
       params: productVariantsParamSchema,
     },
     handler: getVariants,

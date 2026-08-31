@@ -11,14 +11,21 @@ import { supermarketBodySchema, supermarketIdParamSchema } from './supermarkets.
 
 const supermarketsRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get('/', {
-    schema: { tags: ['Supermercados'], summary: 'Listar supermercados' },
+    onRequest: [requireAuth],
+    schema: {
+      tags: ['Supermercados'],
+      summary: 'Listar supermercados',
+      security: [{ bearerAuth: [] }],
+    },
     handler: getSupermarkets,
   })
 
   fastify.get('/:id', {
+    onRequest: [requireAuth],
     schema: {
       tags: ['Supermercados'],
       summary: 'Detalhes de um supermercado',
+      security: [{ bearerAuth: [] }],
       params: supermarketIdParamSchema,
     },
     handler: getSupermarket,

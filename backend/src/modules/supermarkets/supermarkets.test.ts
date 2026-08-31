@@ -15,12 +15,12 @@ describe('supermarkets routes', () => {
     await app.close()
   })
 
-  it('lista supermercados publicamente', async () => {
+  it('lista supermercados', async () => {
     prismaMock.supermarket.findMany.mockResolvedValueOnce([
       { id: 1, name: 'Continente', location: null } as never,
     ])
 
-    const res = await app.inject({ method: 'GET', url: '/api/supermarkets' })
+    const res = await app.inject({ method: 'GET', url: '/api/supermarkets', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(res.statusCode).toBe(200)
     expect(res.json()).toHaveLength(1)
@@ -29,7 +29,7 @@ describe('supermarkets routes', () => {
   it('devolve 404 para supermercado inexistente', async () => {
     prismaMock.supermarket.findUnique.mockResolvedValueOnce(null)
 
-    const res = await app.inject({ method: 'GET', url: '/api/supermarkets/999' })
+    const res = await app.inject({ method: 'GET', url: '/api/supermarkets/999', headers: authHeader(app, { sub: 1, role: 'USER' }) })
 
     expect(res.statusCode).toBe(404)
   })
@@ -97,5 +97,17 @@ describe('supermarkets routes', () => {
     })
 
     expect(res.statusCode).toBe(204)
+  })
+
+  // As leituras eram públicas até 31/08/2026 — expunham o dataset todo e os
+  // nomes reais em createdBy a quem não estivesse autenticado (AUDITORIA.md).
+  describe.each([
+    '/api/supermarkets',
+    '/api/supermarkets/1',
+  ])(`leitura protegida: %s`, (url) => {
+    it(`responde 401 sem token`, async () => {
+      const res = await app.inject({ method: 'GET', url })
+      expect(res.statusCode).toBe(401)
+    })
   })
 })
