@@ -44,35 +44,35 @@ async function resendVerification() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+  <div class="flex min-h-screen items-center justify-center bg-background p-4">
     <div class="w-full max-w-md">
       <div class="mb-8 text-center">
-        <h1 class="text-2xl font-bold text-gray-900">Carrinho de Compras</h1>
+        <h1 class="text-2xl font-bold text-foreground">Carrinho de Compras</h1>
       </div>
 
       <Card class="p-8 text-center">
         <div v-if="loading" class="flex flex-col items-center gap-4 py-4">
-          <Spinner class="size-8 text-brand-600" />
-          <p class="text-sm text-gray-500">A confirmar o teu email…</p>
+          <Spinner class="size-8 text-primary" />
+          <p class="text-sm text-muted-foreground">A confirmar o teu email…</p>
         </div>
 
         <div v-else-if="verified">
-          <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
-            <CheckIcon class="size-6 text-brand-600" />
+          <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <CheckIcon class="size-6 text-primary" />
           </div>
-          <h2 class="mb-2 text-lg font-semibold text-gray-900">Email confirmado</h2>
-          <p class="mb-6 text-sm text-gray-500">Já podes entrar na tua conta.</p>
+          <h2 class="mb-2 text-lg font-semibold text-foreground">Email confirmado</h2>
+          <p class="mb-6 text-sm text-muted-foreground">Já podes entrar na tua conta.</p>
           <Button as-child class="w-full">
             <RouterLink to="/login">Ir para o login</RouterLink>
           </Button>
         </div>
 
         <div v-else>
-          <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
-            <XIcon class="size-6 text-red-500" />
+          <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+            <XIcon class="size-6 text-destructive" />
           </div>
-          <h2 class="mb-2 text-lg font-semibold text-gray-900">{{ error }}</h2>
-          <p class="mb-4 text-sm text-gray-500">Podes pedir um novo link de confirmação.</p>
+          <h2 class="mb-2 text-lg font-semibold text-foreground">{{ error }}</h2>
+          <p class="mb-4 text-sm text-muted-foreground">Podes pedir um novo link de confirmação.</p>
 
           <div class="space-y-3 text-left">
             <Input v-model="resendEmail" type="email" placeholder="email@exemplo.com" autocomplete="email" />
@@ -85,12 +85,12 @@ async function resendVerification() {
             >
               {{ resending ? 'A reenviar…' : 'Reenviar email de confirmação' }}
             </Button>
-            <p v-if="resendMessage" class="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
+            <p v-if="resendMessage" class="rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary">
               {{ resendMessage }}
             </p>
           </div>
 
-          <RouterLink to="/login" class="mt-6 block text-sm text-brand-600 hover:underline">
+          <RouterLink to="/login" class="mt-6 block text-sm text-primary hover:underline">
             Voltar ao login
           </RouterLink>
         </div>

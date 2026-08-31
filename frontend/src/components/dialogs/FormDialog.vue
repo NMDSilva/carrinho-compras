@@ -58,7 +58,7 @@ function submit() {
       <!-- Erro acima do footer, dentro do body -->
       <div
         v-if="error"
-        class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        class="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
       >
         {{ error }}
       </div>

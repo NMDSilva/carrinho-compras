@@ -7,23 +7,22 @@
 @theme {
   --font-sans:
     'Inter', ui-sans-serif, system-ui, sans-serif;
-
-  --color-brand-50: #f5f3ff;
-  --color-brand-100: #ede9fe;
-  --color-brand-200: #ddd6fe;
-  --color-brand-300: #c4b5fd;
-  --color-brand-400: #a78bfa;
-  --color-brand-500: #8b5cf6;
-  --color-brand-600: #7c3aed;
-  --color-brand-700: #6d28d9;
-  --color-brand-800: #5b21b6;
-  --color-brand-900: #4c1d95;
 }
+
+/* A paleta `brand-*` (violet 50-900) foi removida de propósito: a cor da marca
+   vive agora só em `--primary`, que tem valor próprio por tema. Uma classe fixa
+   como `bg-brand-600` não responde à classe `.dark`, por isso deixá-la de fora
+   do `@theme` faz o build falhar em vez de deixar passar uma cor que ficaria
+   ilegível num dos temas. Tintas da marca: `bg-primary/10`, `text-primary`. */
 
 :root {
   --radius: 0.625rem;
 
-  --background: oklch(1 0 0);
+  /* `--background` é o fundo da página (mais escuro que `--card`, como no bloco
+     `.dark`); `--card` é a superfície elevada — cartões, barra lateral,
+     cabeçalho mobile. Manter esta relação nos dois temas é o que permite
+     escrever `bg-background`/`bg-card` no markup sem nenhum par `dark:`. */
+  --background: oklch(0.98 0 0);
   --foreground: oklch(0.145 0 0);
 
   --card: oklch(1 0 0);
@@ -32,30 +31,45 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
 
-  /* brand-600 / white — botões/anéis de foco primários usam a cor da marca */
+  /* violet-600 / branco — a cor da marca. No `.dark` sobe para violet-500, que
+     tem contraste suficiente sobre o fundo escuro. */
   --primary: #7c3aed;
   --primary-foreground: #ffffff;
 
-  --secondary: oklch(0.97 0 0);
+  --secondary: oklch(0.95 0 0);
   --secondary-foreground: oklch(0.205 0 0);
 
-  --muted: oklch(0.97 0 0);
+  /* Um pouco mais escuro que `--background`, para o separador ativo dos `Tabs`
+     (`bg-background` sobre `bg-muted`) e o cabeçalho das tabelas continuarem a
+     destacar-se do fundo da página. */
+  --muted: oklch(0.95 0 0);
   --muted-foreground: oklch(0.556 0 0);
 
-  --accent: oklch(0.97 0 0);
+  --accent: oklch(0.95 0 0);
   --accent-foreground: oklch(0.205 0 0);
 
   --destructive: oklch(0.577 0.245 27.325);
+
+  /* Estados semânticos — mesma ideia do `--destructive` do shadcn, para os
+     badges/indicadores de "mais barato", "por rever" e unidade não precisarem
+     de um par `dark:` em cada sítio onde aparecem. Tons ~700 no tema claro
+     (legíveis sobre um fundo `/10` quase branco) e ~400 no escuro. */
+  --success: oklch(0.527 0.154 150);
+  --warning: oklch(0.554 0.135 66);
+  --info: oklch(0.488 0.184 264);
 
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: #8b5cf6;
 
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Paleta categórica do histórico de preços (uma cor por supermercado, ver
+     `COLORS`/`BG_COLORS` em `CompareView.vue`) — tons ~600 no tema claro,
+     ~400 no escuro, para o traço continuar legível sobre o fundo de cada um. */
+  --chart-1: #7c3aed;
+  --chart-2: #2563eb;
+  --chart-3: #0d9488;
+  --chart-4: #ea580c;
+  --chart-5: #dc2626;
 
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -77,8 +91,13 @@
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
 
+  /* violet-500 — um tom acima do tema claro, para `text-primary` (links, item
+     ativo da navegação) manter contraste sobre o fundo escuro. O texto por cima
+     continua branco: o padrão do shadcn aqui é um `--primary` quase branco com
+     texto escuro, mas a nossa cor de marca é saturada e o preto por cima ficava
+     ilegível. */
   --primary: #8b5cf6;
-  --primary-foreground: oklch(0.145 0 0);
+  --primary-foreground: #ffffff;
 
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -91,15 +110,19 @@
 
   --destructive: oklch(0.704 0.191 22.216);
 
+  --success: oklch(0.792 0.18 151);
+  --warning: oklch(0.85 0.16 86);
+  --info: oklch(0.707 0.165 255);
+
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: #8b5cf6;
 
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --chart-1: #a78bfa;
+  --chart-2: #60a5fa;
+  --chart-3: #2dd4bf;
+  --chart-4: #fb923c;
+  --chart-5: #f87171;
 
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
@@ -134,6 +157,9 @@
   --color-accent-foreground: var(--accent-foreground);
 
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
 
   --color-border: var(--border);
   --color-input: var(--input);

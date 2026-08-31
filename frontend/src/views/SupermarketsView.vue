@@ -90,8 +90,8 @@ async function confirmDelete() {
   <div>
     <div class="mb-8 flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Supermercados</h1>
-        <p class="mt-1 text-gray-500">Gerir supermercados</p>
+        <h1 class="text-2xl font-bold text-foreground">Supermercados</h1>
+        <p class="mt-1 text-muted-foreground">Gerir supermercados</p>
       </div>
       <Button @click="openCreate">
         <PlusIcon class="size-4" />
@@ -100,7 +100,7 @@ async function confirmDelete() {
     </div>
 
     <div v-if="loading" class="flex h-40 items-center justify-center">
-      <Spinner class="size-8 text-brand-600" />
+      <Spinner class="size-8 text-primary" />
     </div>
 
     <Alert v-else-if="error || deleteError" variant="destructive">
@@ -108,7 +108,7 @@ async function confirmDelete() {
     </Alert>
 
     <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div v-if="supermarkets.length === 0" class="col-span-full py-16 text-center text-gray-400">
+      <div v-if="supermarkets.length === 0" class="col-span-full py-16 text-center text-muted-foreground">
         Nenhum supermercado registado
       </div>
       <Card
@@ -117,17 +117,17 @@ async function confirmDelete() {
         class="flex flex-row items-start justify-between gap-4 p-5 transition-shadow hover:shadow-md"
       >
         <div class="flex items-start gap-4">
-          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100">
-            <StoreIcon class="size-5 text-blue-600" />
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-chart-2/10">
+            <StoreIcon class="size-5 text-chart-2" />
           </div>
           <div>
-            <p class="font-semibold text-gray-900">{{ s.name }}</p>
-            <p v-if="s.location" class="mt-0.5 text-sm text-gray-500">{{ s.location }}</p>
-            <p class="mt-1 text-xs text-gray-400">{{ s._count?.prices ?? 0 }} preços registados</p>
-            <div v-if="s.createdBy" class="mt-1 text-xs text-gray-400">
-              por <span class="font-medium text-gray-600">{{ s.createdBy.name }}</span>
+            <p class="font-semibold text-foreground">{{ s.name }}</p>
+            <p v-if="s.location" class="mt-0.5 text-sm text-muted-foreground">{{ s.location }}</p>
+            <p class="mt-1 text-xs text-muted-foreground">{{ s._count?.prices ?? 0 }} preços registados</p>
+            <div v-if="s.createdBy" class="mt-1 text-xs text-muted-foreground">
+              por <span class="font-medium text-foreground">{{ s.createdBy.name }}</span>
               <template v-if="s.updatedBy && s.updatedBy.id !== s.createdBy.id">
-                · editado por <span class="font-medium text-gray-600">{{ s.updatedBy.name }}</span>
+                · editado por <span class="font-medium text-foreground">{{ s.updatedBy.name }}</span>
               </template>
             </div>
           </div>

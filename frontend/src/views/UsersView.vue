@@ -95,22 +95,22 @@ onMounted(loadUsers)
 <template>
   <div>
     <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Gestão de Utilizadores</h1>
-      <p class="mt-1 text-sm text-gray-500">Administre contas e permissões dos utilizadores</p>
+      <h1 class="text-2xl font-bold text-foreground">Gestão de Utilizadores</h1>
+      <p class="mt-1 text-sm text-muted-foreground">Administre contas e permissões dos utilizadores</p>
     </div>
 
     <div v-if="loading" class="flex items-center justify-center py-16">
-      <Spinner class="size-6 text-brand-600" />
+      <Spinner class="size-6 text-primary" />
     </div>
 
     <Alert v-else-if="error || deleteError" variant="destructive">
       <AlertDescription>{{ error || deleteError }}</AlertDescription>
     </Alert>
 
-    <div v-else class="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div v-else class="overflow-hidden rounded-xl border bg-card">
       <Table>
         <TableHeader>
-          <TableRow class="bg-gray-50">
+          <TableRow class="bg-muted">
             <TableHead>Utilizador</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Papel</TableHead>
@@ -122,34 +122,34 @@ onMounted(loadUsers)
           <TableRow v-for="user in users" :key="user.id">
             <TableCell>
               <div class="flex items-center gap-3">
-                <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-100">
-                  <span class="text-xs font-semibold text-brand-700">{{ user.name.charAt(0).toUpperCase() }}</span>
+                <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <span class="text-xs font-semibold text-primary">{{ user.name.charAt(0).toUpperCase() }}</span>
                 </div>
-                <span class="font-medium text-gray-900">{{ user.name }}</span>
-                <span v-if="user.id === auth.user?.id" class="text-xs text-gray-400">(eu)</span>
+                <span class="font-medium text-foreground">{{ user.name }}</span>
+                <span v-if="user.id === auth.user?.id" class="text-xs text-muted-foreground">(eu)</span>
               </div>
             </TableCell>
-            <TableCell class="text-gray-600">{{ user.email }}</TableCell>
+            <TableCell class="text-foreground">{{ user.email }}</TableCell>
             <TableCell>
               <Badge
                 variant="outline"
                 :class="
                   user.role === 'ADMIN'
-                    ? 'border-brand-200 bg-brand-50 text-brand-700'
-                    : 'border-gray-200 bg-gray-100 text-gray-600'
+                    ? 'border-primary/20 bg-primary/10 text-primary'
+                    : 'border-border bg-muted text-muted-foreground'
                 "
               >
                 {{ user.role === 'ADMIN' ? 'Administrador' : 'Utilizador' }}
               </Badge>
             </TableCell>
-            <TableCell class="text-gray-500">{{ formatDate(user.createdAt) }}</TableCell>
+            <TableCell class="text-muted-foreground">{{ formatDate(user.createdAt) }}</TableCell>
             <TableCell class="text-right">
               <div class="flex items-center justify-end gap-2">
                 <Button
                   variant="ghost"
                   size="icon-sm"
                   title="Editar"
-                  class="text-gray-400 hover:bg-brand-50 hover:text-brand-600"
+                  class="text-muted-foreground hover:bg-primary/10 hover:text-primary"
                   @click="openEdit(user)"
                 >
                   <PencilIcon class="size-4" />
@@ -160,7 +160,7 @@ onMounted(loadUsers)
                   size="icon-sm"
                   title="Eliminar"
                   data-testid="delete-user"
-                  class="text-gray-400 hover:bg-red-50 hover:text-red-500"
+                  class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   @click="openDeleteConfirm(user)"
                 >
                   <TrashIcon class="size-4" />
@@ -169,7 +169,7 @@ onMounted(loadUsers)
             </TableCell>
           </TableRow>
           <TableRow v-if="users.length === 0">
-            <TableCell colspan="5" class="py-8 text-center text-sm text-gray-400">
+            <TableCell colspan="5" class="py-8 text-center text-sm text-muted-foreground">
               Nenhum utilizador encontrado
             </TableCell>
           </TableRow>
@@ -204,14 +204,14 @@ onMounted(loadUsers)
               <SelectItem value="ADMIN">Administrador</SelectItem>
             </SelectContent>
           </Select>
-          <p v-if="editTarget?.id === auth.user?.id" class="text-xs text-gray-400">
+          <p v-if="editTarget?.id === auth.user?.id" class="text-xs text-muted-foreground">
             Não pode alterar o seu próprio papel
           </p>
         </div>
         <div class="space-y-1.5">
           <Label>
             Nova password
-            <span class="font-normal text-gray-400">(opcional)</span>
+            <span class="font-normal text-muted-foreground">(opcional)</span>
           </Label>
           <Input v-model="editForm.password" type="password" placeholder="Deixar em branco para manter" />
         </div>

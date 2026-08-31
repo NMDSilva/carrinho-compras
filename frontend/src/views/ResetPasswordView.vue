@@ -45,19 +45,19 @@ async function submit() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+  <div class="flex min-h-screen items-center justify-center bg-background p-4">
     <div class="w-full max-w-md">
       <div class="mb-8 text-center">
-        <h1 class="text-2xl font-bold text-gray-900">Carrinho de Compras</h1>
+        <h1 class="text-2xl font-bold text-foreground">Carrinho de Compras</h1>
       </div>
 
       <Card class="p-8">
         <div v-if="done" class="text-center">
-          <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
-            <CheckIcon class="size-6 text-brand-600" />
+          <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <CheckIcon class="size-6 text-primary" />
           </div>
-          <h2 class="mb-2 text-lg font-semibold text-gray-900">Password atualizada</h2>
-          <p class="mb-6 text-sm text-gray-500">Já podes entrar com a nova password.</p>
+          <h2 class="mb-2 text-lg font-semibold text-foreground">Password atualizada</h2>
+          <p class="mb-6 text-sm text-muted-foreground">Já podes entrar com a nova password.</p>
           <Button as-child class="w-full">
             <RouterLink to="/login">Ir para o login</RouterLink>
           </Button>
@@ -67,19 +67,19 @@ async function submit() {
           <Alert variant="destructive">
             <AlertDescription>{{ error }}</AlertDescription>
           </Alert>
-          <RouterLink to="/recuperar-password" class="mt-6 block text-center text-sm text-brand-600 hover:underline">
+          <RouterLink to="/recuperar-password" class="mt-6 block text-center text-sm text-primary hover:underline">
             Pedir novo link
           </RouterLink>
         </template>
 
         <template v-else>
-          <h2 class="mb-6 text-lg font-semibold text-gray-900">Definir nova password</h2>
+          <h2 class="mb-6 text-lg font-semibold text-foreground">Definir nova password</h2>
 
           <form class="space-y-4" @submit.prevent="submit">
             <div class="space-y-1.5">
               <Label>Nova password</Label>
               <Input v-model="password" type="password" placeholder="••••••••" autocomplete="new-password" />
-              <p class="text-xs text-gray-400">Mínimo 6 caracteres</p>
+              <p class="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
             </div>
             <div class="space-y-1.5">
               <Label>Confirmar password</Label>
@@ -89,7 +89,7 @@ async function submit() {
                 placeholder="••••••••"
                 autocomplete="new-password"
               />
-              <p v-if="mismatch" class="text-xs text-red-500">As passwords não coincidem</p>
+              <p v-if="mismatch" class="text-xs text-destructive">As passwords não coincidem</p>
             </div>
 
             <Alert v-if="error" variant="destructive">

@@ -90,25 +90,25 @@ async function savePassword() {
 <template>
   <div class="max-w-xl">
     <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">O meu perfil</h1>
-      <p class="mt-1 text-sm text-gray-500">Gere as tuas informações de conta</p>
+      <h1 class="text-2xl font-bold text-foreground">O meu perfil</h1>
+      <p class="mt-1 text-sm text-muted-foreground">Gere as tuas informações de conta</p>
     </div>
 
     <!-- Avatar + nome atual -->
     <Card class="mb-8 flex-row items-center gap-4 p-4">
-      <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-brand-100">
-        <span class="text-xl font-bold text-brand-700">{{ auth.user?.name.charAt(0).toUpperCase() }}</span>
+      <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+        <span class="text-xl font-bold text-primary">{{ auth.user?.name.charAt(0).toUpperCase() }}</span>
       </div>
       <div>
-        <p class="font-semibold text-gray-900">{{ auth.user?.name }}</p>
-        <p class="text-sm text-gray-500">{{ auth.user?.email }}</p>
+        <p class="font-semibold text-foreground">{{ auth.user?.name }}</p>
+        <p class="text-sm text-muted-foreground">{{ auth.user?.email }}</p>
         <Badge
           variant="outline"
           class="mt-1"
           :class="
             auth.isAdmin
-              ? 'border-brand-200 bg-brand-50 text-brand-700'
-              : 'border-gray-200 bg-gray-100 text-gray-600'
+              ? 'border-primary/20 bg-primary/10 text-primary'
+              : 'border-border bg-muted text-muted-foreground'
           "
         >
           {{ auth.isAdmin ? 'Administrador' : 'Utilizador' }}
@@ -118,9 +118,9 @@ async function savePassword() {
 
     <!-- Aparência -->
     <Card class="mb-6 p-6">
-      <h2 class="mb-1 text-base font-semibold text-gray-900">Aparência</h2>
-      <p class="mb-4 text-sm text-gray-500">Escolhe como a aplicação aparece para ti.</p>
-      <div class="inline-flex rounded-lg border border-gray-200 p-1">
+      <h2 class="mb-1 text-base font-semibold text-foreground">Aparência</h2>
+      <p class="mb-4 text-sm text-muted-foreground">Escolhe como a aplicação aparece para ti.</p>
+      <div class="inline-flex rounded-lg border p-1">
         <Button
           :variant="auth.user?.theme === 'dark' ? 'ghost' : 'default'"
           size="sm"
@@ -144,7 +144,7 @@ async function savePassword() {
 
     <!-- Informação pessoal -->
     <Card class="mb-6 p-6">
-      <h2 class="mb-4 text-base font-semibold text-gray-900">Informação pessoal</h2>
+      <h2 class="mb-4 text-base font-semibold text-foreground">Informação pessoal</h2>
 
       <div class="space-y-4">
         <div class="space-y-1.5">
@@ -171,7 +171,7 @@ async function savePassword() {
 
     <!-- Alterar password -->
     <Card class="p-6">
-      <h2 class="mb-4 text-base font-semibold text-gray-900">Alterar password</h2>
+      <h2 class="mb-4 text-base font-semibold text-foreground">Alterar password</h2>
 
       <div class="space-y-4">
         <div class="space-y-1.5">
@@ -191,7 +191,7 @@ async function savePassword() {
             autocomplete="new-password"
             placeholder="••••••••"
           />
-          <p class="text-xs text-gray-400">Mínimo 6 caracteres</p>
+          <p class="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
         </div>
         <div class="space-y-1.5">
           <Label>Confirmar nova password</Label>
@@ -200,11 +200,11 @@ async function savePassword() {
             type="password"
             autocomplete="new-password"
             placeholder="••••••••"
-            :class="pwForm.confirmPassword && pwForm.confirmPassword !== pwForm.newPassword ? 'border-red-400' : ''"
+            :class="pwForm.confirmPassword && pwForm.confirmPassword !== pwForm.newPassword ? 'border-destructive' : ''"
           />
           <p
             v-if="pwForm.confirmPassword && pwForm.confirmPassword !== pwForm.newPassword"
-            class="text-xs text-red-500"
+            class="text-xs text-destructive"
           >
             As passwords não coincidem
           </p>

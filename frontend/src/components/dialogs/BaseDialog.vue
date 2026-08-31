@@ -65,7 +65,7 @@ function onPointerDownOutside(event: Event) {
 
       <DialogFooter
         v-if="$slots.footer"
-        class="mx-0 mb-0 shrink-0 items-center border-t bg-gray-50 px-6 py-4"
+        class="mx-0 mb-0 shrink-0 items-center border-t bg-muted/50 px-6 py-4"
       >
         <slot name="footer" />
       </DialogFooter>

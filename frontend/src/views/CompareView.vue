@@ -125,27 +125,30 @@ function getPriceBarWidth(price: number, allPrices: number[]) {
   return Math.round(((price - min) / (max - min)) * 60 + 20)
 }
 
+// Paleta categórica do tema (`--chart-1..5` em `style.css`), com tons próprios
+// para claro/escuro — não usar cores Tailwind fixas aqui, ficariam ilegíveis
+// num dos dois temas.
 const COLORS = [
-  'text-brand-600',
-  'text-blue-600',
-  'text-purple-600',
-  'text-orange-600',
-  'text-red-600',
+  'text-chart-1',
+  'text-chart-2',
+  'text-chart-3',
+  'text-chart-4',
+  'text-chart-5',
 ]
 const BG_COLORS = [
-  'bg-brand-500',
-  'bg-blue-500',
-  'bg-purple-500',
-  'bg-orange-500',
-  'bg-red-500',
+  'bg-chart-1',
+  'bg-chart-2',
+  'bg-chart-3',
+  'bg-chart-4',
+  'bg-chart-5',
 ]
 </script>
 
 <template>
   <div>
     <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900">Comparar Preços</h1>
-      <p class="mt-1 text-gray-500">
+      <h1 class="text-2xl font-bold text-foreground">Comparar Preços</h1>
+      <p class="mt-1 text-muted-foreground">
         Compare preços de um produto entre marcas/supermercados e veja a
         evolução
       </p>
@@ -204,7 +207,7 @@ const BG_COLORS = [
       <AlertDescription>{{ compareError || historyError }}</AlertDescription>
     </Alert>
 
-    <Card v-if="!selectedProductObj" class="p-16 text-center text-gray-400">
+    <Card v-if="!selectedProductObj" class="p-16 text-center text-muted-foreground">
       <ScaleIcon class="mx-auto mb-3 size-12 opacity-30" stroke-width="1.5" />
       <p>Seleciona um produto para comparar preços</p>
     </Card>
@@ -218,19 +221,19 @@ const BG_COLORS = [
       <!-- Compare tab -->
       <TabsContent value="compare">
         <div v-if="loading" class="flex h-40 items-center justify-center">
-          <Spinner class="size-8 text-brand-600" />
+          <Spinner class="size-8 text-primary" />
         </div>
         <div v-else-if="compareResult">
           <div class="mb-4">
-            <h2 class="text-lg font-semibold text-gray-900">
+            <h2 class="text-lg font-semibold text-foreground">
               {{ compareResult.product.name }}
             </h2>
-            <p class="text-sm text-gray-500">
+            <p class="text-sm text-muted-foreground">
               Melhor preço por supermercado/marca — o mais barato primeiro
             </p>
           </div>
 
-          <Card v-if="compareResult.prices.length === 0" class="p-10 text-center text-gray-400">
+          <Card v-if="compareResult.prices.length === 0" class="p-10 text-center text-muted-foreground">
             Nenhum preço registado para este produto
           </Card>
 
@@ -239,32 +242,30 @@ const BG_COLORS = [
               v-for="(price, index) in compareResult.prices"
               :key="price.id"
               class="flex-row items-center justify-between gap-6 p-5"
-              :class="index === 0 ? 'ring-2 ring-brand-500' : ''"
+              :class="index === 0 ? 'ring-2 ring-primary' : ''"
             >
               <div class="flex items-center gap-4">
                 <div
-                  class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                  class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold"
                   :class="
                     index === 0
-                      ? 'bg-brand-500'
-                      : index === 1
-                        ? 'bg-gray-300'
-                        : 'bg-gray-200'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
                   "
                 >
                   {{ index + 1 }}
                 </div>
                 <div>
-                  <p class="font-semibold text-gray-900">
+                  <p class="font-semibold text-foreground">
                     {{ price.supermarket?.name }}
                   </p>
-                  <p v-if="price.variant" class="text-xs text-gray-500">
+                  <p v-if="price.variant" class="text-xs text-muted-foreground">
                     {{ formatVariant(price.variant) }}
                   </p>
-                  <p class="text-xs text-gray-400">
+                  <p class="text-xs text-muted-foreground">
                     Registado em {{ formatDate(price.date) }}
                   </p>
-                  <p v-if="price.notes" class="text-xs text-gray-400">
+                  <p v-if="price.notes" class="text-xs text-muted-foreground">
                     {{ price.notes }}
                   </p>
                 </div>
@@ -272,17 +273,17 @@ const BG_COLORS = [
               <div class="text-right">
                 <p
                   class="text-2xl font-bold"
-                  :class="index === 0 ? 'text-brand-600' : 'text-gray-700'"
+                  :class="index === 0 ? 'text-primary' : 'text-foreground'"
                 >
                   {{ formatPrice(price.price) }}
                 </p>
                 <p
                   v-if="index === 0"
-                  class="mt-0.5 text-xs font-medium text-brand-600"
+                  class="mt-0.5 text-xs font-medium text-primary"
                 >
                   mais barato
                 </p>
-                <p v-else class="mt-0.5 text-xs text-red-500">
+                <p v-else class="mt-0.5 text-xs text-destructive">
                   +{{
                     formatPrice(price.price - compareResult!.prices[0].price)
                   }}
@@ -295,14 +296,14 @@ const BG_COLORS = [
 
       <!-- History tab -->
       <TabsContent value="history">
-        <Card v-if="!selectedVariant" class="p-10 text-center text-gray-400">
+        <Card v-if="!selectedVariant" class="p-10 text-center text-muted-foreground">
           Seleciona uma variante para ver o histórico de preços
         </Card>
         <div v-else-if="loadingHistory" class="flex h-40 items-center justify-center">
-          <Spinner class="size-8 text-brand-600" />
+          <Spinner class="size-8 text-primary" />
         </div>
         <div v-else-if="historyResult">
-          <Card v-if="historyResult.history.length === 0" class="p-10 text-center text-gray-400">
+          <Card v-if="historyResult.history.length === 0" class="p-10 text-center text-muted-foreground">
             Nenhum histórico disponível
           </Card>
           <div v-else class="space-y-6">
@@ -311,15 +312,15 @@ const BG_COLORS = [
               :key="group.supermarket.id"
               class="py-0"
             >
-              <div class="flex items-center gap-3 border-b border-gray-100 px-6 py-4">
+              <div class="flex items-center gap-3 border-b px-6 py-4">
                 <div
                   class="h-3 w-3 rounded-full"
                   :class="BG_COLORS[gi % BG_COLORS.length]"
                 ></div>
-                <h3 class="font-semibold text-gray-900">
+                <h3 class="font-semibold text-foreground">
                   {{ group.supermarket.name }}
                 </h3>
-                <span class="text-sm text-gray-400"
+                <span class="text-sm text-muted-foreground"
                   >{{ group.records.length }} registos</span
                 >
               </div>
@@ -329,10 +330,10 @@ const BG_COLORS = [
                   :key="record.date"
                   class="flex items-center gap-4"
                 >
-                  <span class="w-24 flex-shrink-0 text-xs text-gray-400">{{
+                  <span class="w-24 flex-shrink-0 text-xs text-muted-foreground">{{
                     formatDate(record.date)
                   }}</span>
-                  <div class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                  <div class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                     <div
                       class="h-2 rounded-full transition-all"
                       :class="BG_COLORS[gi % BG_COLORS.length]"

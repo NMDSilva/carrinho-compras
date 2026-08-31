@@ -250,8 +250,8 @@ function formatDate(date: string) {
   <div>
     <div class="mb-8 flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Preços</h1>
-        <p class="mt-1 text-gray-500">Registar e gerir preços de produtos</p>
+        <h1 class="text-2xl font-bold text-foreground">Preços</h1>
+        <p class="mt-1 text-muted-foreground">Registar e gerir preços de produtos</p>
       </div>
       <Button @click="openCreate">
         <PlusIcon class="size-4" />
@@ -297,14 +297,14 @@ function formatDate(date: string) {
     <!-- Table -->
     <Card class="py-0">
       <div v-if="loading" class="flex h-40 items-center justify-center">
-        <Spinner class="size-8 text-brand-600" />
+        <Spinner class="size-8 text-primary" />
       </div>
       <Alert v-else-if="error || deleteError" variant="destructive" class="m-6">
         <AlertDescription>{{ error || deleteError }}</AlertDescription>
       </Alert>
       <Table v-else>
         <TableHeader>
-          <TableRow class="bg-gray-50">
+          <TableRow class="bg-muted">
             <TableHead>Produto</TableHead>
             <TableHead>Supermercado</TableHead>
             <TableHead class="text-right">Preço</TableHead>
@@ -317,49 +317,49 @@ function formatDate(date: string) {
         </TableHeader>
         <TableBody>
           <TableRow v-if="prices.length === 0">
-            <TableCell colspan="8" class="py-12 text-center text-gray-400">
+            <TableCell colspan="8" class="py-12 text-center text-muted-foreground">
               Nenhum registo encontrado
             </TableCell>
           </TableRow>
           <TableRow v-for="price in prices" :key="price.id">
             <TableCell>
-              <p class="font-medium text-gray-900">
+              <p class="font-medium text-foreground">
                 {{ price.variant?.product?.name }}
               </p>
-              <p v-if="price.variant" class="text-xs text-gray-400">
+              <p v-if="price.variant" class="text-xs text-muted-foreground">
                 {{ formatVariant(price.variant) }}
               </p>
             </TableCell>
-            <TableCell class="text-gray-600">
+            <TableCell class="text-foreground">
               {{ price.supermarket?.name }}
             </TableCell>
-            <TableCell class="text-right font-semibold text-brand-700">
+            <TableCell class="text-right font-semibold text-primary">
               {{ formatPrice(price.price) }}
             </TableCell>
-            <TableCell class="text-right text-gray-500">
+            <TableCell class="text-right text-muted-foreground">
               {{ price.quantity }}
             </TableCell>
-            <TableCell class="text-gray-500">
+            <TableCell class="text-muted-foreground">
               {{ formatDate(price.date) }}
             </TableCell>
-            <TableCell class="max-w-32 truncate text-xs text-gray-400">
+            <TableCell class="max-w-32 truncate text-xs text-muted-foreground">
               {{ price.notes ?? '—' }}
             </TableCell>
             <TableCell>
               <div v-if="price.createdBy" class="text-xs">
-                <span class="font-medium text-gray-700">{{
+                <span class="font-medium text-foreground">{{
                   price.createdBy.name
                 }}</span>
                 <span
                   v-if="
                     price.updatedBy && price.updatedBy.id !== price.createdBy.id
                   "
-                  class="block text-gray-400"
+                  class="block text-muted-foreground"
                 >
                   editado por {{ price.updatedBy.name }}
                 </span>
               </div>
-              <span v-else class="text-xs text-gray-300">—</span>
+              <span v-else class="text-xs text-muted-foreground">—</span>
             </TableCell>
             <TableCell>
               <div class="flex items-center justify-end gap-2">
