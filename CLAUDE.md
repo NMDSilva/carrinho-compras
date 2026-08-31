@@ -139,11 +139,13 @@ Validada a servir o `dist/` localmente com estes cabeçalhos, exercitando login,
 
 ## Staging
 
-Push para o branch `staging` dispara `.github/workflows/deploy-staging.yml` — mesmo gate (lint+test) e mesma VM da produção, mas isolado: pasta `~/carrinho-compras-staging`, processo pm2 `carrinho-compras-staging`, porta própria (definida no `.env` de staging). Reutiliza o **mesmo container Postgres** da produção (poupa recursos), mas numa base de dados à parte (`carrinho_compras_staging`, criada automaticamente pelo workflow se não existir) — nunca mexe nos dados de produção.
+Push para o branch `staging` dispara `.github/workflows/deploy-staging.yml` — mesmo gate (lint+test) e mesma VM da produção, mas isolado: pasta `~/carrinho-compras-staging`, processo pm2 `carrinho-compras-staging`, porta própria (definida no `.env` de staging). Reutiliza o **mesmo container Postgres** da produção (poupa recursos), mas numa base de dados à parte (`carrinho_compras_staging`, criada automaticamente pelo workflow se não existir) — nunca mexe nos dados de produção. Ao contrário do de produção, este workflow **não faz backup antes das migrações** (dados descartáveis, e o `backup-db.sh` faz dump da BD de produção).
 
-**Setup manual necessário (ainda não feito por CI):**
-1. Criar o branch `staging` (`git checkout -b staging && git push -u origin staging`).
-2. Adicionar o secret `ENV_FILE_STAGING` no GitHub — mesmas variáveis que `ENV_FILE`, mas com `PORT` diferente (ex: `3001`) e `DATABASE_URL` a apontar para `carrinho_compras_staging` em vez de `carrinho_compras` (mesmo host/porta do Postgres, só muda o nome da BD).
+Ter os dois ambientes na mesma VM significa dois processos Node em simultâneo — vale a pena confirmar a folga de memória (`free -h`) antes de ligar o staging, sobretudo porque o `npm ci` do deploy já corre com `--max-old-space-size=512`.
+
+**Setup manual necessário (ainda não feito por CI) — por esta ordem:**
+1. **Primeiro** adicionar o secret `ENV_FILE_STAGING` no GitHub (Settings → Secrets and variables → Actions), com o conteúdo de um `.env` completo: as mesmas variáveis que `ENV_FILE`, mudando `PORT` para `3001` e `DATABASE_URL` para apontar a `carrinho_compras_staging` em vez de `carrinho_compras` (mesmo host, porta e credenciais — só muda o nome da BD). Convém também um `JWT_SECRET` diferente do de produção, para uma sessão de staging não valer em produção.
+2. **Só depois** criar o branch (`git checkout -b staging && git push -u origin staging`). A ordem importa: o push dispara logo o workflow, e sem o secret o `.env` na VM fica vazio — o processo pm2 `carrinho-compras-staging` arranca sem `DATABASE_URL`, morre, e fica registado no `pm2 save`. Não afeta produção (o `pm2 delete all` só existe no deploy de produção), mas obriga a limpar à mão.
 3. Para aceder à app de staging: por omissão só fica acessível na VM (`curl localhost:3001/api/health`) ou via túnel SSH (`ssh -L 3001:localhost:3001 <user>@<host>`) — não há vhost nginx automático. Se quiseres um URL público, cria um `server` block extra no nginx da VM a apontar para a porta de staging e para `~/carrinho-compras-staging/frontend/dist` — ver a secção "nginx (VM)" acima, incluindo o aviso de nunca substituir o ficheiro de config por inteiro.
 
 ## Tarefas em aberto / dívida técnica conhecida
