@@ -321,8 +321,8 @@ async function confirmReassign() {
   <div>
     <div class="mb-8 flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Produtos</h1>
-        <p class="mt-1 text-gray-500">
+        <h1 class="text-2xl font-bold text-foreground">Produtos</h1>
+        <p class="mt-1 text-muted-foreground">
           Gerir produtos e as suas variantes (marca/embalagem)
         </p>
       </div>
@@ -366,14 +366,14 @@ async function confirmReassign() {
     <!-- Table -->
     <Card class="py-0">
       <div v-if="loading" class="flex h-40 items-center justify-center">
-        <Spinner class="size-8 text-brand-600" />
+        <Spinner class="size-8 text-primary" />
       </div>
       <Alert v-else-if="error || deleteError" variant="destructive" class="m-6">
         <AlertDescription>{{ error || deleteError }}</AlertDescription>
       </Alert>
       <Table v-else>
         <TableHeader>
-          <TableRow class="bg-gray-50">
+          <TableRow class="bg-muted">
             <TableHead class="w-8" />
             <TableHead>Nome</TableHead>
             <TableHead>Categoria</TableHead>
@@ -384,37 +384,37 @@ async function confirmReassign() {
         </TableHeader>
         <TableBody>
           <TableRow v-if="products.length === 0">
-            <TableCell colspan="6" class="py-12 text-center text-gray-400">
+            <TableCell colspan="6" class="py-12 text-center text-muted-foreground">
               Nenhum produto encontrado
             </TableCell>
           </TableRow>
           <template v-for="product in products" :key="product.id">
             <TableRow class="cursor-pointer" @click="toggleExpanded(product.id)">
-              <TableCell class="pl-6 text-gray-400">
+              <TableCell class="pl-6 text-muted-foreground">
                 <ChevronRightIcon
                   class="size-4 transition-transform"
                   :class="{ 'rotate-90': expanded.has(product.id) }"
                 />
               </TableCell>
-              <TableCell class="font-medium text-gray-900">
+              <TableCell class="font-medium text-foreground">
                 {{ product.name }}
                 <Badge
                   v-if="product.needsReview"
                   variant="outline"
-                  class="ml-2 border-yellow-200 bg-yellow-100 text-yellow-800"
+                  class="ml-2 border-warning/30 bg-warning/10 text-warning"
                 >
                   Por rever
                 </Badge>
               </TableCell>
-              <TableCell class="text-gray-500">
+              <TableCell class="text-muted-foreground">
                 {{ product.category ?? '—' }}
               </TableCell>
-              <TableCell class="text-right text-gray-500">
+              <TableCell class="text-right text-muted-foreground">
                 {{ product.variants?.length ?? 0 }}
               </TableCell>
               <TableCell>
                 <div v-if="product.createdBy" class="text-xs">
-                  <span class="font-medium text-gray-700">{{
+                  <span class="font-medium text-foreground">{{
                     product.createdBy.name
                   }}</span>
                   <span
@@ -422,12 +422,12 @@ async function confirmReassign() {
                       product.updatedBy &&
                       product.updatedBy.id !== product.createdBy.id
                     "
-                    class="block text-gray-400"
+                    class="block text-muted-foreground"
                   >
                     editado por {{ product.updatedBy.name }}
                   </span>
                 </div>
-                <span v-else class="text-xs text-gray-300">—</span>
+                <span v-else class="text-xs text-muted-foreground">—</span>
               </TableCell>
               <TableCell @click.stop>
                 <div class="flex items-center justify-end gap-2">
@@ -446,9 +446,9 @@ async function confirmReassign() {
               </TableCell>
             </TableRow>
             <TableRow v-if="expanded.has(product.id)">
-              <TableCell colspan="6" class="bg-gray-50">
+              <TableCell colspan="6" class="bg-muted/40">
                 <div class="mb-3 flex items-center justify-between">
-                  <h3 class="text-xs font-semibold tracking-wider text-gray-500 uppercase">
+                  <h3 class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                     Variantes
                   </h3>
                   <Button variant="outline" size="sm" @click="openCreateVariant(product.id)">
@@ -457,10 +457,10 @@ async function confirmReassign() {
                 </div>
                 <Table
                   v-if="product.variants && product.variants.length > 0"
-                  class="rounded-lg border border-gray-100 bg-white"
+                  class="rounded-lg border bg-card"
                 >
                   <TableHeader>
-                    <TableRow class="bg-gray-50">
+                    <TableRow class="bg-muted">
                       <TableHead>Marca</TableHead>
                       <TableHead>Tamanho</TableHead>
                       <TableHead>Unidade</TableHead>
@@ -470,10 +470,10 @@ async function confirmReassign() {
                   </TableHeader>
                   <TableBody>
                     <TableRow v-for="variant in product.variants" :key="variant.id">
-                      <TableCell class="text-gray-900">
+                      <TableCell class="text-foreground">
                         {{ variant.brand ?? '—' }}
                       </TableCell>
-                      <TableCell class="text-gray-500">
+                      <TableCell class="text-muted-foreground">
                         <span v-if="variant.packageSize == null">—</span>
                         <span v-else-if="variant.packCount"
                           >{{ variant.packCount }} ×
@@ -482,11 +482,11 @@ async function confirmReassign() {
                         <span v-else>{{ variant.packageSize }}</span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" class="border-blue-200 bg-blue-100 text-blue-800">
+                        <Badge variant="outline" class="border-info/30 bg-info/10 text-info">
                           {{ variant.unit }}
                         </Badge>
                       </TableCell>
-                      <TableCell class="text-right text-gray-500">
+                      <TableCell class="text-right text-muted-foreground">
                         {{ variant._count?.prices ?? 0 }}
                       </TableCell>
                       <TableCell>
@@ -513,7 +513,7 @@ async function confirmReassign() {
                     </TableRow>
                   </TableBody>
                 </Table>
-                <p v-else class="text-sm text-gray-400">
+                <p v-else class="text-sm text-muted-foreground">
                   Ainda sem variantes — cria a primeira acima.
                 </p>
               </TableCell>
@@ -635,9 +635,9 @@ async function confirmReassign() {
       @submit="confirmReassign"
     >
       <div class="space-y-4">
-        <p class="text-sm text-gray-500">
+        <p class="text-sm text-muted-foreground">
           A variante
-          <b class="text-gray-900">{{ reassignSource?.brand ?? 'Genérico' }}</b>
+          <b class="text-foreground">{{ reassignSource?.brand ?? 'Genérico' }}</b>
           vai passar a pertencer a outro produto. Se o produto de origem ficar
           sem mais nenhuma variante, é eliminado automaticamente.
         </p>
@@ -650,7 +650,7 @@ async function confirmReassign() {
             placeholder="Pesquisar produto de destino..."
           />
         </div>
-        <p v-if="reassignTarget" class="text-sm text-brand-700">
+        <p v-if="reassignTarget" class="text-sm text-primary">
           Destino selecionado: <b>{{ reassignTarget.name }}</b>
         </p>
       </div>

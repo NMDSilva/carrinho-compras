@@ -30,7 +30,7 @@ function close() {
     size="sm"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <p class="text-sm leading-relaxed text-gray-600">{{ message }}</p>
+    <p class="text-sm leading-relaxed text-muted-foreground">{{ message }}</p>
 
     <template #footer>
       <Button type="button" variant="outline" @click="close">

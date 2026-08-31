@@ -50,6 +50,34 @@ Corre `npm run db:generate` antes de testar/buildar o backend se ainda não o ti
 - **Rate limiting**: `@fastify/rate-limit` está registado com `global: false` — só se aplica onde uma rota define `config: { rateLimit: {...} }`. `/api/auth/login` e `/api/auth/register` têm 5 pedidos/minuto por IP. Decisão deliberada: o registo continua a responder 409 "Email já registado" (permite enumeração de email), mitigado só pelo rate limit — não escondemos essa mensagem, porque a UX de dizer "já tens conta, inicia sessão" foi considerada mais valiosa que fechar esse vetor de baixa severidade numa app pessoal.
 - **Verificação de email / reposição de password** (`backend/src/modules/auth/`, `backend/src/shared/lib/email.ts`): conta nova fica `emailVerified: false` e o `login` responde 403 com `code: "EMAIL_NOT_VERIFIED"` até se clicar no link do email (`POST /api/auth/verify-email`). Tokens de verificação (24h) e de reposição de password (1h) guardam-se como hash SHA-256 em `User`, nunca em texto simples. Envio de email via Resend (`RESEND_API_KEY`) — sem essa variável definida, o email fica só registado na consola (`console.log`), pensado para desenvolvimento local sem precisar de conta Resend nem de um serviço tipo Mailhog. `/api/auth/forgot-password` e `/api/auth/resend-verification` respondem sempre a mesma mensagem genérica de sucesso, exista ou não a conta (evita enumeração de email por esses dois endpoints). **Contas criadas antes desta funcionalidade existir ficaram `emailVerified: true` por backfill na migration** — só contas novas precisam de confirmar.
 
+## Convenções do frontend — cores e tema
+
+A app tem tema claro/escuro por utilizador (campo `User.theme`, `"light"`/`"dark"`, escolhido em `/perfil` via `PATCH /api/auth/me`; `App.vue` aplica a classe `.dark` ao `<html>` a partir de `auth.user.theme`). Todo o UI é retemizado automaticamente, sem nenhum par `dark:` escrito no markup, porque **nenhuma view usa cores Tailwind fixas** — só tokens semânticos definidos em `frontend/src/style.css` (`:root` para claro, `.dark` para escuro, expostos como classes pelo bloco `@theme inline`).
+
+**Regra**: nunca escrever `text-gray-*`, `bg-gray-*`, `bg-white`, `text-white`, `border-gray-*`, `text-red-*`, `bg-yellow-*`, etc. no markup — essas classes não respondem à classe `.dark` e ficam ilegíveis num dos temas. Usar sempre:
+
+| Intenção | Token |
+| --- | --- |
+| Fundo da página | `bg-background` |
+| Superfície elevada (cartão, barra lateral, cabeçalho mobile) | `bg-card` |
+| Secção destacada (cabeçalho de tabela, rodapé de dialog) | `bg-muted` / `bg-muted/50` |
+| Texto principal | `text-foreground` |
+| Texto secundário | `text-muted-foreground` |
+| Bordas / separadores | só `border`/`border-t`/`divide-y` (o `@layer base { * { @apply border-border } }` já dá a cor) |
+| Cor da marca (sólido) | `bg-primary` + `text-primary-foreground` |
+| Cor da marca (texto, ícone, item ativo) | `text-primary` |
+| Cor da marca (tinta de fundo) | `bg-primary/10`, `border-primary/20` |
+| Erro / ação destrutiva | `text-destructive`, `bg-destructive/10` |
+| Estados semânticos | `text-success` / `text-warning` / `text-info` (+ `bg-…/10`, `border-…/30`) |
+| Séries categóricas (uma cor por supermercado no histórico) | `text-chart-1..5` / `bg-chart-1..5` |
+
+Notas:
+
+- `--success`/`--warning`/`--info` são uma extensão nossa ao conjunto do shadcn (que só traz `--destructive`), precisamente para os badges "mais barato", "Por rever" e de unidade não precisarem de par `dark:` em cada sítio. Tons ~700 no tema claro, ~400 no escuro.
+- `--chart-1..5` deixaram de ser a escala de cinzentos que o shadcn-vue gera por omissão e passaram a ser uma paleta categórica real (violet/azul/teal/laranja/vermelho), com tons próprios por tema.
+- No tema claro `--background` é ligeiramente mais escuro que `--card` (fundo cinzento, cartões brancos), a mesma relação que o bloco `.dark` já tinha — é isso que permite usar `bg-background`/`bg-card` sem condicionais. `--muted` é um degrau abaixo de `--background` para o separador ativo dos `Tabs` (`bg-background` sobre `bg-muted`) continuar a destacar-se.
+- A paleta `brand-*` **foi removida** do `@theme`: a cor da marca vive só em `--primary`. `bg-brand-600` já não compila — é de propósito, falha no build em vez de passar despercebido.
+
 ## Variáveis de ambiente (backend/.env)
 
 `DATABASE_URL`, `POSTGRES_PASSWORD`, `PORT`, `NODE_ENV`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `N8N_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_URL`.
@@ -80,20 +108,6 @@ Push para o branch `staging` dispara `.github/workflows/deploy-staging.yml` — 
 
 ## Tarefas em aberto / dívida técnica conhecida
 
-- **Tema dark — infraestrutura pronta, retema visual por fazer**: cada utilizador já pode escolher "Claro"/"Escuro" em `/perfil` (campo `User.theme` no Prisma, `"light"`/`"dark"`, `PATCH /api/auth/me`; `App.vue` aplica a classe `.dark` ao `<html>` a partir de `auth.user.theme`). As variáveis CSS do tema escuro já existem em `frontend/src/style.css` (bloco `.dark`, geradas pelo shadcn-vue init, com `--primary`/`--ring` já ajustados para violet) e os componentes shadcn-vue (`Button`, `Card`, `Dialog`, etc.) já respondem à classe `.dark` corretamente, porque usam as variáveis semânticas (`bg-background`, `text-foreground`, `border-border`, ...).
-  **O que falta**: as 11 views + `App.vue` + `BaseDialog`/`InfoDialog` (dialogs) têm ~165 ocorrências de cor Tailwind fixa (`text-gray-*`, `bg-gray-*`, `bg-white`, `border-gray-*`) escritas diretamente no markup em vez de através das variáveis semânticas — essas classes **não respondem** à classe `.dark`, por isso ligar o toggle hoje só retemiza os componentes shadcn-vue, deixando a maior parte do texto/fundo de página inalterada (visual inconsistente, não é um dark mode utilizável).
-  Contagem por ficheiro (`grep -rocE "text-gray-[0-9]+|bg-gray-[0-9]+|bg-white\b|border-gray-[0-9]+" src/**/*.vue`, 2026-08-31): `App.vue` 20, `ProductsView` 21, `CompareView` 20, `DashboardView` 20, `UsersView` 14, `PricesView` 13, `ProfileView` 11, `SupermarketsView` 9, `LoginView` 9, `ForgotPasswordView`/`VerifyEmailView` 7, `ResetPasswordView`/`ReviewProductsView` 6, `BaseDialog`/`InfoDialog` 1 cada.
-  **Plano de conversão** (mesmo padrão faseado da migração para shadcn-vue: um ficheiro/PR de cada vez, do mais simples ao mais complexo, testes verdes a cada passo):
-  1. Mapeamento a aplicar caso a caso (não é substituição mecânica 1:1 — o mesmo `bg-gray-50` pode significar "fundo da página" ou "secção destacada", consoante o contexto):
-     - `text-gray-900`/`text-gray-800` → `text-foreground` (texto principal)
-     - `text-gray-700`/`text-gray-600` → `text-foreground` (ênfase) ou `text-muted-foreground` (secundário) consoante o peso visual
-     - `text-gray-500`/`text-gray-400`/`text-gray-300` → `text-muted-foreground`
-     - `bg-white` → `bg-card` (superfície tipo cartão) ou `bg-background` (fundo de página/secção)
-     - `bg-gray-50` → `bg-muted` (secção destacada, ex: cabeçalho de tabela) ou `bg-background` (fundo de página)
-     - `border-gray-100`/`border-gray-200` → `border-border`, ou remover a cor e usar só `border` (o `@layer base { * { @apply border-border ... } }` em `style.css` já dá `--border` a qualquer elemento por omissão)
-  2. Badges/indicadores com cor semântica própria (amarelo "Por rever" em `ProductsView`, vermelho da diferença de preço em `CompareView`, verde "mais barato" em `DashboardView`) não estão contados acima (usam `yellow-*`/`red-*`/`green-*`, não `gray-*`) mas também precisam de par `dark:` próprio (ex: `bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300`) — ficam por rever nesta mesma passagem, não estão cobertos pela tabela de mapeamento acima.
-  3. Ordem sugerida (App.vue primeiro por afetar todas as páginas, depois pela mesma ordem de complexidade crescente já usada na migração shadcn-vue): `App.vue` → views de autenticação → `SupermarketsView` → `DashboardView` → `ProfileView`+`UsersView` → `CompareView`+`ReviewProductsView` → `PricesView` → `ProductsView` → dialogs.
-  4. Verificação por ficheiro: **modo claro tem de ficar visualmente idêntico ao atual** (as variáveis semânticas em `:root` já reproduzem os mesmos tons de cinza), e o modo escuro revisto visualmente (screenshot) antes de avançar para o seguinte — os valores de `--background`/`--card`/`--muted`/`--border` do bloco `.dark` já existem e não deviam precisar de ajuste, é só adoção nas views.
 - **Staging**: confirmado em 2026-08-30 que o branch `staging` ainda não existe e o secret `ENV_FILE_STAGING` ainda não está criado no GitHub — ver secção "Staging" acima para os passos.
 - **Achados de auditorias de segurança/qualidade**: registados em [`AUDITORIA.md`](./AUDITORIA.md), com checkbox por achado (por resolver / corrigido). Consultar esse ficheiro antes de propor trabalho novo em áreas já auditadas, e marcar os achados como corrigidos ali (não aqui) quando resolvidos.
 

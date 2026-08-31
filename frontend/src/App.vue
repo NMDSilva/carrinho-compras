@@ -59,25 +59,21 @@ function logout() {
   <!-- Página de login: sem sidebar -->
   <RouterView v-if="route.name === 'login'" />
 
-  <div v-else class="min-h-screen bg-gray-50">
+  <div v-else class="min-h-screen bg-background">
     <!-- Sidebar (desktop) -->
     <aside class="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-      <div
-        class="flex flex-col flex-1 min-h-0 bg-white border-r border-gray-200"
-      >
+      <div class="flex flex-col flex-1 min-h-0 bg-card border-r">
         <!-- Logo -->
-        <div class="flex items-center h-16 px-6 border-b border-gray-200">
+        <div class="flex items-center h-16 px-6 border-b">
           <div class="flex items-center gap-3">
             <div
-              class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center"
+              class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center"
             >
-              <ShoppingCartIcon class="w-5 h-5 text-white" />
+              <ShoppingCartIcon class="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <p class="text-sm font-bold text-gray-900">Carrinho de</p>
-              <p class="text-xs font-semibold text-brand-600 -mt-0.5">
-                Compras
-              </p>
+              <p class="text-sm font-bold text-foreground">Carrinho de</p>
+              <p class="text-xs font-semibold text-primary -mt-0.5">Compras</p>
             </div>
           </div>
         </div>
@@ -91,8 +87,8 @@ function logout() {
             class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
             :class="
               route.path === item.to
-                ? 'bg-brand-50 text-brand-700'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             "
           >
             <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
@@ -103,7 +99,7 @@ function logout() {
           <template v-if="auth.isAdmin">
             <div class="pt-4 pb-1">
               <p
-                class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider"
+                class="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
               >
                 Administração
               </p>
@@ -115,8 +111,8 @@ function logout() {
               class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
               :class="
                 route.path === item.to
-                  ? 'bg-brand-50 text-brand-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               "
             >
               <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
@@ -126,26 +122,26 @@ function logout() {
         </nav>
 
         <!-- User info + logout (sidebar) -->
-        <div v-if="auth.user" class="px-4 py-4 border-t border-gray-100">
+        <div v-if="auth.user" class="px-4 py-4 border-t">
           <div class="flex items-center gap-3">
             <RouterLink
               to="/perfil"
               class="flex items-center gap-3 min-w-0 flex-1 group"
             >
               <div
-                class="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-brand-200 transition-colors"
+                class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors"
               >
-                <span class="text-brand-700 font-semibold text-sm">{{
+                <span class="text-primary font-semibold text-sm">{{
                   auth.user.name.charAt(0).toUpperCase()
                 }}</span>
               </div>
               <div class="min-w-0 flex-1">
                 <p
-                  class="text-sm font-medium text-gray-900 truncate group-hover:text-brand-700 transition-colors"
+                  class="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors"
                 >
                   {{ auth.user.name }}
                 </p>
-                <p class="text-xs text-gray-400 truncate">
+                <p class="text-xs text-muted-foreground truncate">
                   {{ auth.user.email }}
                 </p>
               </div>
@@ -154,7 +150,7 @@ function logout() {
               variant="ghost"
               size="icon-sm"
               title="Sair"
-              class="text-gray-400 hover:bg-red-50 hover:text-red-500"
+              class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
               @click="logout"
             >
               <LogOutIcon class="w-4 h-4" />
@@ -165,22 +161,22 @@ function logout() {
     </aside>
 
     <!-- Mobile header -->
-    <div class="lg:hidden sticky top-0 z-10 bg-white border-b border-gray-200">
+    <div class="lg:hidden sticky top-0 z-10 bg-card border-b">
       <div class="flex items-center justify-between h-14 px-4">
         <div class="flex items-center gap-2">
           <div
-            class="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center"
+            class="w-7 h-7 bg-primary rounded-lg flex items-center justify-center"
           >
-            <ShoppingCartIcon class="w-4 h-4 text-white" />
+            <ShoppingCartIcon class="w-4 h-4 text-primary-foreground" />
           </div>
-          <span class="font-bold text-gray-900 text-sm"
+          <span class="font-bold text-foreground text-sm"
             >Carrinho de Compras</span
           >
         </div>
         <Button
           variant="ghost"
           size="icon-sm"
-          class="text-gray-500"
+          class="text-muted-foreground"
           @click="mobileMenuOpen = !mobileMenuOpen"
         >
           <MenuIcon v-if="!mobileMenuOpen" class="w-5 h-5" />
@@ -191,7 +187,7 @@ function logout() {
       <!-- Mobile menu -->
       <div
         v-if="mobileMenuOpen"
-        class="border-t border-gray-200 py-2 px-4 space-y-1"
+        class="border-t py-2 px-4 space-y-1"
       >
         <RouterLink
           v-for="item in navItems"
@@ -200,8 +196,8 @@ function logout() {
           class="block px-3 py-2 rounded-lg text-sm font-medium"
           :class="
             route.path === item.to
-              ? 'bg-brand-50 text-brand-700'
-              : 'text-gray-600 hover:bg-gray-50'
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           "
           @click="mobileMenuOpen = false"
         >
@@ -209,7 +205,7 @@ function logout() {
         </RouterLink>
         <template v-if="auth.isAdmin">
           <p
-            class="px-3 pt-3 text-xs font-semibold text-gray-400 uppercase tracking-wider"
+            class="px-3 pt-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
           >
             Administração
           </p>
@@ -220,8 +216,8 @@ function logout() {
             class="block px-3 py-2 rounded-lg text-sm font-medium"
             :class="
               route.path === item.to
-                ? 'bg-brand-50 text-brand-700'
-                : 'text-gray-600 hover:bg-gray-50'
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             "
             @click="mobileMenuOpen = false"
           >
@@ -230,11 +226,11 @@ function logout() {
         </template>
         <div
           v-if="auth.user"
-          class="pt-2 mt-2 border-t border-gray-100 flex items-center justify-between"
+          class="pt-2 mt-2 border-t flex items-center justify-between"
         >
-          <span class="text-xs text-gray-400">{{ auth.user.name }}</span>
+          <span class="text-xs text-muted-foreground">{{ auth.user.name }}</span>
           <button
-            class="text-xs text-red-500 font-medium hover:underline"
+            class="text-xs text-destructive font-medium hover:underline"
             @click="logout"
           >
             Sair

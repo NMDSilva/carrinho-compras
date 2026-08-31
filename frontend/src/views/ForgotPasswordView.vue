@@ -22,30 +22,30 @@ async function submit() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+  <div class="flex min-h-screen items-center justify-center bg-background p-4">
     <div class="w-full max-w-md">
       <div class="mb-8 text-center">
-        <h1 class="text-2xl font-bold text-gray-900">Carrinho de Compras</h1>
+        <h1 class="text-2xl font-bold text-foreground">Carrinho de Compras</h1>
       </div>
 
       <Card class="p-8">
         <div v-if="sent" class="text-center">
-          <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
-            <MailCheckIcon class="size-6 text-brand-600" />
+          <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <MailCheckIcon class="size-6 text-primary" />
           </div>
-          <h2 class="mb-2 text-lg font-semibold text-gray-900">Verifica o teu email</h2>
-          <p class="text-sm text-gray-500">
-            Se existir uma conta com o email <b class="text-gray-700">{{ email }}</b
+          <h2 class="mb-2 text-lg font-semibold text-foreground">Verifica o teu email</h2>
+          <p class="text-sm text-muted-foreground">
+            Se existir uma conta com o email <b class="text-foreground">{{ email }}</b
             >, enviámos um link para repores a password.
           </p>
-          <RouterLink to="/login" class="mt-6 block text-sm text-brand-600 hover:underline">
+          <RouterLink to="/login" class="mt-6 block text-sm text-primary hover:underline">
             Voltar ao login
           </RouterLink>
         </div>
 
         <template v-else>
-          <h2 class="mb-2 text-lg font-semibold text-gray-900">Recuperar password</h2>
-          <p class="mb-6 text-sm text-gray-500">
+          <h2 class="mb-2 text-lg font-semibold text-foreground">Recuperar password</h2>
+          <p class="mb-6 text-sm text-muted-foreground">
             Indica o email da tua conta — enviamos-te um link para definires uma password nova.
           </p>
 
@@ -65,7 +65,7 @@ async function submit() {
             </Button>
           </form>
 
-          <RouterLink to="/login" class="mt-6 block text-center text-sm text-brand-600 hover:underline">
+          <RouterLink to="/login" class="mt-6 block text-center text-sm text-primary hover:underline">
             Voltar ao login
           </RouterLink>
         </template>

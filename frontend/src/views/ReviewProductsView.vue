@@ -87,8 +87,8 @@ function formatVariant(product: Product) {
 <template>
   <div>
     <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900">Produtos por rever</h1>
-      <p class="mt-1 text-gray-500">
+      <h1 class="text-2xl font-bold text-foreground">Produtos por rever</h1>
+      <p class="mt-1 text-muted-foreground">
         Produtos criados automaticamente pela importação de faturas — reatribui
         a variante para um produto já existente ou marca como revisto se o nome
         já estiver correto.
@@ -97,17 +97,17 @@ function formatVariant(product: Product) {
 
     <Card class="py-0">
       <div v-if="loading" class="flex h-40 items-center justify-center">
-        <Spinner class="size-8 text-brand-600" />
+        <Spinner class="size-8 text-primary" />
       </div>
       <Alert v-else-if="error" variant="destructive" class="m-6">
         <AlertDescription>{{ error }}</AlertDescription>
       </Alert>
-      <div v-else-if="products.length === 0" class="py-12 text-center text-gray-400">
+      <div v-else-if="products.length === 0" class="py-12 text-center text-muted-foreground">
         Não há produtos por rever de momento.
       </div>
       <Table v-else>
         <TableHeader>
-          <TableRow class="bg-gray-50">
+          <TableRow class="bg-muted">
             <TableHead>Nome (texto da fatura)</TableHead>
             <TableHead>Variante</TableHead>
             <TableHead>Reatribuir para</TableHead>
@@ -116,10 +116,10 @@ function formatVariant(product: Product) {
         </TableHeader>
         <TableBody>
           <TableRow v-for="product in products" :key="product.id">
-            <TableCell class="font-medium text-gray-900">
+            <TableCell class="font-medium text-foreground">
               {{ product.name }}
             </TableCell>
-            <TableCell class="text-gray-500">
+            <TableCell class="text-muted-foreground">
               {{ formatVariant(product) }}
             </TableCell>
             <TableCell>

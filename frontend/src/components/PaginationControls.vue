@@ -19,7 +19,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex items-center justify-between border-t border-gray-100 px-6 py-4 text-sm text-gray-500">
+  <div class="flex items-center justify-between border-t px-6 py-4 text-sm text-muted-foreground">
     <span>{{ total }} {{ itemLabel }}</span>
     <div class="flex items-center gap-2">
       <Button

@@ -85,32 +85,32 @@ function backToLogin() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+  <div class="flex min-h-screen items-center justify-center bg-background p-4">
     <div class="w-full max-w-md">
       <!-- Logo -->
       <div class="mb-8 text-center">
-        <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-600 shadow-lg">
-          <ShoppingCartIcon class="size-9 text-white" />
+        <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg">
+          <ShoppingCartIcon class="size-9 text-primary-foreground" />
         </div>
-        <h1 class="text-2xl font-bold text-gray-900">Carrinho de Compras</h1>
-        <p class="mt-1 text-sm text-gray-500">Rastreador de preços de supermercado</p>
+        <h1 class="text-2xl font-bold text-foreground">Carrinho de Compras</h1>
+        <p class="mt-1 text-sm text-muted-foreground">Rastreador de preços de supermercado</p>
       </div>
 
       <!-- Ecrã de confirmação depois de registar -->
       <Card v-if="registeredEmail" class="p-8 text-center">
-        <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
-          <MailCheckIcon class="size-6 text-brand-600" />
+        <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+          <MailCheckIcon class="size-6 text-primary" />
         </div>
-        <h2 class="mb-2 text-lg font-semibold text-gray-900">Confirma o teu email</h2>
-        <p class="text-sm text-gray-500">
-          Enviámos um link de confirmação para <b class="text-gray-700">{{ registeredEmail }}</b
+        <h2 class="mb-2 text-lg font-semibold text-foreground">Confirma o teu email</h2>
+        <p class="text-sm text-muted-foreground">
+          Enviámos um link de confirmação para <b class="text-foreground">{{ registeredEmail }}</b
           >. Clica nele para ativares a conta — só depois consegues entrar.
         </p>
         <Button variant="outline" class="mt-6 w-full" @click="backToLogin">Voltar ao login</Button>
       </Card>
 
       <Card v-else class="p-8">
-        <h2 class="mb-6 text-lg font-semibold text-gray-900">
+        <h2 class="mb-6 text-lg font-semibold text-foreground">
           {{ mode === 'login' ? 'Entrar na conta' : 'Criar conta' }}
         </h2>
 
@@ -131,7 +131,7 @@ function backToLogin() {
               <RouterLink
                 v-if="mode === 'login'"
                 to="/recuperar-password"
-                class="text-xs text-brand-600 hover:underline"
+                class="text-xs text-primary hover:underline"
               >
                 Esqueceste-te da password?
               </RouterLink>
@@ -142,7 +142,7 @@ function backToLogin() {
               placeholder="••••••••"
               :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
             />
-            <p v-if="mode === 'register'" class="text-xs text-gray-400">Mínimo 6 caracteres</p>
+            <p v-if="mode === 'register'" class="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
           </div>
 
           <Alert v-if="error" variant="destructive">
@@ -151,7 +151,7 @@ function backToLogin() {
               <button
                 v-if="showResend"
                 type="button"
-                class="text-sm font-medium text-brand-600 hover:underline"
+                class="text-sm font-medium text-primary hover:underline"
                 :disabled="resending"
                 @click="resendVerification"
               >
@@ -159,7 +159,7 @@ function backToLogin() {
               </button>
             </AlertDescription>
           </Alert>
-          <p v-if="resendMessage" class="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
+          <p v-if="resendMessage" class="rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary">
             {{ resendMessage }}
           </p>
 
@@ -169,10 +169,10 @@ function backToLogin() {
           </Button>
         </form>
 
-        <div class="mt-6 text-center text-sm text-gray-500">
+        <div class="mt-6 text-center text-sm text-muted-foreground">
           {{ mode === 'login' ? 'Ainda não tens conta?' : 'Já tens conta?' }}
           <button
-            class="ml-1 font-medium text-brand-600 hover:underline"
+            class="ml-1 font-medium text-primary hover:underline"
             data-testid="switch-mode"
             @click="switchMode"
           >

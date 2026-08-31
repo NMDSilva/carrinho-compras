@@ -40,12 +40,12 @@ function formatDate(date: string) {
 <template>
   <div>
     <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
-      <p class="mt-1 text-gray-500">Visão geral dos preços registados</p>
+      <h1 class="text-2xl font-bold text-foreground">Dashboard</h1>
+      <p class="mt-1 text-muted-foreground">Visão geral dos preços registados</p>
     </div>
 
     <div v-if="loading" class="flex h-64 items-center justify-center">
-      <Spinner class="size-10 text-brand-600" data-testid="loading-spinner" />
+      <Spinner class="size-10 text-primary" data-testid="loading-spinner" />
     </div>
 
     <Alert v-else-if="error" variant="destructive">
@@ -57,42 +57,42 @@ function formatDate(date: string) {
       <div class="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
         <Card class="p-6">
           <div class="flex items-center gap-4">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-100">
-              <PackageIcon class="size-6 text-brand-600" />
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-chart-1/10">
+              <PackageIcon class="size-6 text-chart-1" />
             </div>
             <div>
-              <p class="text-3xl font-bold text-gray-900">
+              <p class="text-3xl font-bold text-foreground">
                 {{ stats.stats.totalProducts }}
               </p>
-              <p class="mt-0.5 text-sm text-gray-500">Produtos</p>
+              <p class="mt-0.5 text-sm text-muted-foreground">Produtos</p>
             </div>
           </div>
         </Card>
 
         <Card class="p-6">
           <div class="flex items-center gap-4">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100">
-              <StoreIcon class="size-6 text-blue-600" />
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-chart-2/10">
+              <StoreIcon class="size-6 text-chart-2" />
             </div>
             <div>
-              <p class="text-3xl font-bold text-gray-900">
+              <p class="text-3xl font-bold text-foreground">
                 {{ stats.stats.totalSupermarkets }}
               </p>
-              <p class="mt-0.5 text-sm text-gray-500">Supermercados</p>
+              <p class="mt-0.5 text-sm text-muted-foreground">Supermercados</p>
             </div>
           </div>
         </Card>
 
         <Card class="p-6">
           <div class="flex items-center gap-4">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100">
-              <TagIcon class="size-6 text-purple-600" />
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-chart-3/10">
+              <TagIcon class="size-6 text-chart-3" />
             </div>
             <div>
-              <p class="text-3xl font-bold text-gray-900">
+              <p class="text-3xl font-bold text-foreground">
                 {{ stats.stats.totalPrices }}
               </p>
-              <p class="mt-0.5 text-sm text-gray-500">Preços Registados</p>
+              <p class="mt-0.5 text-sm text-muted-foreground">Preços Registados</p>
             </div>
           </div>
         </Card>
@@ -101,30 +101,30 @@ function formatDate(date: string) {
       <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <!-- Preços mais recentes -->
         <Card class="py-0">
-          <div class="border-b border-gray-100 px-6 py-4">
-            <h2 class="font-semibold text-gray-900">Últimos Registos</h2>
+          <div class="border-b px-6 py-4">
+            <h2 class="font-semibold text-foreground">Últimos Registos</h2>
           </div>
-          <div v-if="stats.recentPrices.length === 0" class="p-6 text-center text-sm text-gray-400">
+          <div v-if="stats.recentPrices.length === 0" class="p-6 text-center text-sm text-muted-foreground">
             Nenhum registo ainda
           </div>
-          <ul v-else class="divide-y divide-gray-50">
+          <ul v-else class="divide-y divide-border">
             <li
               v-for="price in stats.recentPrices"
               :key="price.id"
               class="flex items-center justify-between gap-4 px-6 py-4"
             >
               <div class="min-w-0">
-                <p class="truncate font-medium text-gray-900">
+                <p class="truncate font-medium text-foreground">
                   {{ price.variant?.product?.name }}
-                  <span v-if="price.variant?.brand" class="font-normal text-gray-400"
+                  <span v-if="price.variant?.brand" class="font-normal text-muted-foreground"
                     >· {{ price.variant.brand }}</span
                   >
                 </p>
-                <p class="mt-0.5 text-xs text-gray-500">
+                <p class="mt-0.5 text-xs text-muted-foreground">
                   {{ price.supermarket?.name }} · {{ formatDate(price.date) }}
                 </p>
               </div>
-              <span class="whitespace-nowrap font-semibold text-brand-700">{{
+              <span class="whitespace-nowrap font-semibold text-primary">{{
                 formatPrice(price.price)
               }}</span>
             </li>
@@ -133,37 +133,37 @@ function formatDate(date: string) {
 
         <!-- Melhores preços -->
         <Card class="py-0">
-          <div class="border-b border-gray-100 px-6 py-4">
-            <h2 class="font-semibold text-gray-900">Melhores Preços por Produto</h2>
+          <div class="border-b px-6 py-4">
+            <h2 class="font-semibold text-foreground">Melhores Preços por Produto</h2>
           </div>
-          <div v-if="stats.cheapestByProduct.length === 0" class="p-6 text-center text-sm text-gray-400">
+          <div v-if="stats.cheapestByProduct.length === 0" class="p-6 text-center text-sm text-muted-foreground">
             Nenhum dado disponível
           </div>
-          <ul v-else class="divide-y divide-gray-50">
+          <ul v-else class="divide-y divide-border">
             <li
               v-for="item in stats.cheapestByProduct"
               :key="item.productId"
               class="flex items-center justify-between gap-4 px-6 py-4"
             >
               <div class="min-w-0">
-                <p class="truncate font-medium text-gray-900">
+                <p class="truncate font-medium text-foreground">
                   {{ item.productName }}
-                  <span v-if="item.variantBrand" class="font-normal text-gray-400"
+                  <span v-if="item.variantBrand" class="font-normal text-muted-foreground"
                     >· {{ item.variantBrand }}</span
                   >
                 </p>
-                <p class="mt-0.5 text-xs text-gray-500">
-                  <Badge variant="outline" class="border-brand-200 bg-brand-100 text-brand-800">
+                <p class="mt-0.5 text-xs text-muted-foreground">
+                  <Badge variant="outline" class="border-primary/20 bg-primary/10 text-primary">
                     {{ item.supermarketName }}
                   </Badge>
                   <span class="ml-2">{{ formatDate(item.date) }}</span>
                 </p>
               </div>
               <div class="text-right">
-                <p class="font-bold text-brand-700">
+                <p class="font-bold text-primary">
                   {{ formatPrice(item.minPrice) }}
                 </p>
-                <p class="text-xs font-medium text-green-600">mais barato</p>
+                <p class="text-xs font-medium text-success">mais barato</p>
               </div>
             </li>
           </ul>
