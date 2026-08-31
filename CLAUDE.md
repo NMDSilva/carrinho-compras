@@ -91,6 +91,14 @@ Notas:
 - `EMAIL_FROM` por omissão é `Carrinho de Compras <onboarding@resend.dev>` (domínio de teste do Resend, só entrega ao email da conta Resend) — em produção convém trocar para um endereço do domínio próprio (`noreply@carrinhodecompras.pt`), depois de verificar o domínio no Resend com os registos DNS que eles pedem.
 - `FRONTEND_URL` por omissão é `http://localhost:5173` — usado para montar os links de verificação/reposição enviados por email (`{FRONTEND_URL}/verificar-email?token=...`); em produção tem de ser `https://carrinhodecompras.pt`.
 
+## nginx (VM)
+
+O nginx da VM serve a SPA a partir de `frontend/dist` e faz proxy de `/api/` para o backend em `localhost:3000`. Devolve os cabeçalhos de segurança da SPA (CSP sem `'unsafe-inline'` em `script-src`, `X-Frame-Options: DENY`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS) no `location /` — o `@fastify/helmet` só cobre `/api/`, e duplicá-los aí daria dois valores para o browser resolver. A CSP depende de o Google Analytics arrancar a partir de `frontend/public/analytics.js`: se voltar a haver um `<script>` inline no `index.html`, esse script deixa de correr.
+
+**O `nginx.conf` na raiz do repo é referência incompleta e NUNCA deve ser copiado por cima da config da VM.** O bloco `listen 443 ssl` com os certificados Let's Encrypt vive dentro do ficheiro `/etc/nginx/sites-available/carrinho-compras` (escrito lá pelo certbot) e não está no repo. Substituir o ficheiro apaga o listener de HTTPS: como a Cloudflare está em modo Full e liga-se à origem por 443, tudo passa a responder **521** — site, API e o endpoint do n8n. Aconteceu a 31/08/2026. O diagnóstico é traiçoeiro, porque `nginx -t` passa e `systemctl status nginx` diz "running"; confirma-se com `sudo ss -ltnp | grep -E ':(80|443)\b'`, que nesse estado só mostra a porta 80. **Recuperação** (não valida nada, não precisa do site acessível): `sudo certbot install --cert-name carrinhodecompras.pt --nginx`.
+
+Para mudar a config: editar o ficheiro na VM e acrescentar só as linhas em falta, mantendo o bloco 443. Depois `sudo nginx -t`, `sudo systemctl reload nginx`, e confirmar com `curl -sI https://carrinhodecompras.pt/` que responde 200 e traz os cabeçalhos.
+
 ## Backups
 
 `backend/scripts/backup-db.sh` faz `pg_dump` diário e guarda o dump comprimido em `~/backups/carrinho-compras` na própria VM (fora do volume Docker), mantendo só os últimos 14. É instalado como cron job (03:15) pelo próprio workflow de deploy, via `crontab`. **O deploy corre também o mesmo script antes de cada `prisma migrate deploy`** — não há rollback automático de migrations, e sem isto uma migração destrutiva a meio do dia podia custar quase 24h de dados. Antes do dump há uma espera com `pg_isready` (o `docker compose up -d` devolve antes de o Postgres aceitar ligações); se o Postgres não responder, o backup é saltado com aviso, mas um dump que arranque e falhe aborta o deploy de propósito.
@@ -111,7 +119,6 @@ Push para o branch `staging` dispara `.github/workflows/deploy-staging.yml` — 
 
 ## Tarefas em aberto / dívida técnica conhecida
 
-- **Cabeçalhos de segurança da SPA — config pronta, falta aplicar na VM**: o `nginx.conf` do repo já tem CSP, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` e HSTS no `location /`, validados localmente (zero violações de CSP com a app toda exercitada). Como nenhum workflow aplica esse ficheiro, em produção a SPA continua a devolver **zero** cabeçalhos de segurança até se fazer o passo manual: copiar para `/etc/nginx/sites-available/carrinho-compras` na VM, `sudo nginx -t`, `sudo systemctl reload nginx`. A CSP conta com o Google Analytics a arrancar a partir de `frontend/public/analytics.js` — se algum dia voltar a haver um `<script>` inline no `index.html`, esse script deixa de correr.
 - **Staging**: confirmado em 2026-08-30 que o branch `staging` ainda não existe e o secret `ENV_FILE_STAGING` ainda não está criado no GitHub — ver secção "Staging" acima para os passos.
 - **Achados de auditorias de segurança/qualidade**: registados em [`AUDITORIA.md`](./AUDITORIA.md), com checkbox por achado (por resolver / corrigido). Consultar esse ficheiro antes de propor trabalho novo em áreas já auditadas, e marcar os achados como corrigidos ali (não aqui) quando resolvidos.
 
