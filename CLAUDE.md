@@ -93,11 +93,39 @@ Notas:
 
 ## nginx (VM)
 
-O nginx da VM serve a SPA a partir de `frontend/dist` e faz proxy de `/api/` para o backend em `localhost:3000`. Devolve os cabeçalhos de segurança da SPA (CSP sem `'unsafe-inline'` em `script-src`, `X-Frame-Options: DENY`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS) no `location /` — o `@fastify/helmet` só cobre `/api/`, e duplicá-los aí daria dois valores para o browser resolver. A CSP depende de o Google Analytics arrancar a partir de `frontend/public/analytics.js`: se voltar a haver um `<script>` inline no `index.html`, esse script deixa de correr.
+**A configuração do nginx vive só na VM**, em `/etc/nginx/sites-available/carrinho-compras` (com symlink em `sites-enabled/`). Não há cópia no repositório de propósito — existiu um `nginx.conf` de referência e foi removido em 31/08/2026 depois de causar uma paragem do site (ver abaixo). Nenhum workflow gere o nginx.
 
-**O `nginx.conf` na raiz do repo é referência incompleta e NUNCA deve ser copiado por cima da config da VM.** O bloco `listen 443 ssl` com os certificados Let's Encrypt vive dentro do ficheiro `/etc/nginx/sites-available/carrinho-compras` (escrito lá pelo certbot) e não está no repo. Substituir o ficheiro apaga o listener de HTTPS: como a Cloudflare está em modo Full e liga-se à origem por 443, tudo passa a responder **521** — site, API e o endpoint do n8n. Aconteceu a 31/08/2026. O diagnóstico é traiçoeiro, porque `nginx -t` passa e `systemctl status nginx` diz "running"; confirma-se com `sudo ss -ltnp | grep -E ':(80|443)\b'`, que nesse estado só mostra a porta 80. **Recuperação** (não valida nada, não precisa do site acessível): `sudo certbot install --cert-name carrinhodecompras.pt --nginx`.
+O que essa config faz: serve a SPA a partir de `frontend/dist` com fallback para `index.html`, faz proxy de `/api/` para `localhost:3000`, e tem um bloco `listen 443 ssl` com os certificados Let's Encrypt, escrito e renovado pelo **certbot**.
 
-Para mudar a config: editar o ficheiro na VM e acrescentar só as linhas em falta, mantendo o bloco 443. Depois `sudo nginx -t`, `sudo systemctl reload nginx`, e confirmar com `curl -sI https://carrinhodecompras.pt/` que responde 200 e traz os cabeçalhos.
+**Nunca substituir esse ficheiro por inteiro.** O bloco TLS vive lá dentro e não existe em mais lado nenhum. Apagá-lo deixa o nginx só com `listen 80`; como a Cloudflare está em modo **Full** e se liga à origem por 443, tudo passa a responder **521** — site, API e o endpoint do n8n. Aconteceu a 31/08/2026, ao copiar para lá o antigo `nginx.conf` do repo. O diagnóstico é traiçoeiro: `nginx -t` passa e `systemctl status nginx` diz "running", porque o nginx está mesmo bem, só sem TLS. Confirma-se com `sudo ss -ltnp | grep -E ':(80|443)\b'` — nesse estado só aparece a porta 80.
+
+**Recuperação** (não faz validação nenhuma, não precisa do site acessível):
+
+```bash
+sudo certbot install --cert-name carrinhodecompras.pt --nginx
+```
+
+Para alterar a config: editar o ficheiro na VM acrescentando só as linhas em falta, `sudo nginx -t`, `sudo systemctl reload nginx`, e confirmar com `curl -sI https://carrinhodecompras.pt/` que responde 200 e traz os cabeçalhos.
+
+### Cabeçalhos de segurança da SPA
+
+Ficam no `location /` e **não** ao nível do `server`, para não duplicarem os que o `@fastify/helmet` já devolve em `/api/` (dois `X-Frame-Options` deixariam o browser a escolher). Atenção ao comportamento do nginx: `add_header` dentro de um `location` descarta os herdados do `server`, por isso qualquer cabeçalho novo tem de ser acrescentado aí.
+
+```nginx
+add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com; upgrade-insecure-requests" always;
+add_header X-Frame-Options "DENY" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "no-referrer" always;
+add_header Permissions-Policy "geolocation=(), microphone=(), camera=(), interest-cohort=()" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+```
+
+Duas decisões deliberadas nesta CSP:
+
+- **Sem `'unsafe-inline'` em `script-src`** — é isso que a torna útil contra XSS (o JWT vive em `localStorage`, logo um XSS dá tomada de conta completa). Só é possível porque o arranque do Google Analytics vive em `frontend/public/analytics.js` e não inline no `index.html`. **Se voltar a haver um `<script>` inline no `index.html`, esse script deixa de correr.**
+- **Com `'unsafe-inline'` em `style-src`** — inevitável: o Vue e o reka-ui (Popover/Select/Dialog) posicionam-se com estilos inline.
+
+Validada a servir o `dist/` localmente com estes cabeçalhos, exercitando login, tabelas, dialogs, combobox e Select: zero eventos `securitypolicyviolation`.
 
 ## Backups
 
@@ -115,7 +143,7 @@ Push para o branch `staging` dispara `.github/workflows/deploy-staging.yml` — 
 **Setup manual necessário (ainda não feito por CI):**
 1. Criar o branch `staging` (`git checkout -b staging && git push -u origin staging`).
 2. Adicionar o secret `ENV_FILE_STAGING` no GitHub — mesmas variáveis que `ENV_FILE`, mas com `PORT` diferente (ex: `3001`) e `DATABASE_URL` a apontar para `carrinho_compras_staging` em vez de `carrinho_compras` (mesmo host/porta do Postgres, só muda o nome da BD).
-3. Para aceder à app de staging: por omissão só fica acessível na VM (`curl localhost:3001/api/health`) ou via túnel SSH (`ssh -L 3001:localhost:3001 <user>@<host>`) — não há vhost nginx automático. Se quiseres um URL público, cria um `server` block extra no nginx da VM a apontar para a porta de staging e para `~/carrinho-compras-staging/frontend/dist` (o `nginx.conf` no repo é só referência, não é aplicado automaticamente em nenhum dos dois ambientes).
+3. Para aceder à app de staging: por omissão só fica acessível na VM (`curl localhost:3001/api/health`) ou via túnel SSH (`ssh -L 3001:localhost:3001 <user>@<host>`) — não há vhost nginx automático. Se quiseres um URL público, cria um `server` block extra no nginx da VM a apontar para a porta de staging e para `~/carrinho-compras-staging/frontend/dist` — ver a secção "nginx (VM)" acima, incluindo o aviso de nunca substituir o ficheiro de config por inteiro.
 
 ## Tarefas em aberto / dívida técnica conhecida
 
