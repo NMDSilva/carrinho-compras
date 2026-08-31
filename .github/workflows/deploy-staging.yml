@@ -73,7 +73,12 @@ jobs:
             set -e
             export NVM_DIR="$HOME/.nvm"
             if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh"; fi
-            echo "${{ secrets.ENV_FILE_STAGING }}" > ~/carrinho-compras-staging/backend/.env
+            # Heredoc com o delimitador citado ('ENV_EOF') — sem isto, um `$` ou
+            # uma crase dentro de um segredo era expandido pelo bash da VM e o
+            # .env ficava em silêncio com um valor diferente do secret.
+            cat <<'ENV_EOF' > ~/carrinho-compras-staging/backend/.env
+            ${{ secrets.ENV_FILE_STAGING }}
+            ENV_EOF
             chmod 600 ~/carrinho-compras-staging/backend/.env
             cd ~/carrinho-compras-staging/backend
 
@@ -87,6 +92,9 @@ jobs:
 
             NODE_OPTIONS="--max-old-space-size=512" npm ci --omit=dev --no-audit
             npx prisma generate
+            # Sem backup pré-migração (ao contrário da produção): os dados de
+            # staging são descartáveis, e o backup-db.sh faz dump da base de
+            # dados de produção, não desta.
             npx prisma migrate deploy
             pm2 restart carrinho-compras-staging || pm2 start dist/server.js --name carrinho-compras-staging --cwd ~/carrinho-compras-staging/backend
             pm2 save

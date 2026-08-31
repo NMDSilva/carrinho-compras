@@ -7,8 +7,15 @@ import { prismaMock } from '../../../tests/mocks/prisma'
 // O processamento da fatura corre dentro de prisma.$transaction — o mock
 // invoca o callback com o próprio prismaMock, para os mocks por-model
 // (supermarket/product/priceRecord) funcionarem como esperado.
+//
+// Prepara também a verificação de idempotência (`priceRecord.findMany` pelo
+// invoiceRef) a responder "fatura ainda não importada", que é o caminho normal
+// de quase todos os testes. Como é um `mockResolvedValue` (e não `...Once`), um
+// teste que precise do caminho contrário só tem de acrescentar um
+// `mockResolvedValueOnce` — os "once" são consumidos primeiro.
 function mockTransaction() {
   prismaMock.$transaction.mockImplementation((cb) => (cb as (tx: typeof prismaMock) => unknown)(prismaMock))
+  prismaMock.priceRecord.findMany.mockResolvedValue([] as never)
 }
 
 describe('compras routes (N8N)', () => {
@@ -253,5 +260,146 @@ describe('compras routes (N8N)', () => {
     })
 
     expect(res.statusCode).toBe(500)
+  })
+
+  describe('idempotência', () => {
+    it('grava o número e a linha da fatura em cada preço', async () => {
+      mockTransaction()
+      prismaMock.user.findFirst.mockResolvedValueOnce({ id: 1 } as never)
+      prismaMock.supermarket.findFirst.mockResolvedValueOnce({ id: 1, name: 'Continente' } as never)
+      prismaMock.product.findFirst.mockResolvedValue(null as never)
+      prismaMock.product.create
+        .mockResolvedValueOnce({ id: 1, name: 'Leite', variants: [{ id: 1 }] } as never)
+        .mockResolvedValueOnce({ id: 2, name: 'Pão', variants: [{ id: 2 }] } as never)
+      prismaMock.priceRecord.create
+        .mockResolvedValueOnce({ id: 1 } as never)
+        .mockResolvedValueOnce({ id: 2 } as never)
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/compras',
+        headers: { 'x-api-key': 'test-api-key' },
+        payload: {
+          ...payload,
+          produtos: [
+            { produto: 'Leite', valor: 1.5 },
+            { produto: 'Pão', valor: 2 },
+          ],
+        },
+      })
+
+      expect(res.statusCode).toBe(201)
+      expect(res.json()).toMatchObject({ alreadyImported: false, pricesCreated: 2 })
+      expect(prismaMock.priceRecord.create).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ data: expect.objectContaining({ invoiceRef: 'FAT-001', invoiceLine: 0 }) })
+      )
+      expect(prismaMock.priceRecord.create).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ data: expect.objectContaining({ invoiceRef: 'FAT-001', invoiceLine: 1 }) })
+      )
+    })
+
+    it('não volta a criar nada quando a fatura já foi importada', async () => {
+      mockTransaction()
+      prismaMock.user.findFirst.mockResolvedValueOnce({ id: 1 } as never)
+      prismaMock.supermarket.findFirst.mockResolvedValueOnce({ id: 1, name: 'Continente' } as never)
+      prismaMock.priceRecord.findMany.mockResolvedValueOnce([
+        { id: 7, price: 1.5, invoiceLine: 0, product: { name: 'Leite' } },
+      ] as never)
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/compras',
+        headers: { 'x-api-key': 'test-api-key' },
+        payload,
+      })
+
+      expect(res.statusCode).toBe(201)
+      expect(res.json()).toMatchObject({
+        alreadyImported: true,
+        productsCreated: 0,
+        pricesCreated: 0,
+        records: [{ product: 'Leite', price: 1.5, priceRecordId: 7 }],
+      })
+      expect(prismaMock.priceRecord.create).not.toHaveBeenCalled()
+      expect(prismaMock.product.create).not.toHaveBeenCalled()
+    })
+
+    it('procura a fatura já importada pelo número e pelo supermercado', async () => {
+      mockTransaction()
+      prismaMock.user.findFirst.mockResolvedValueOnce({ id: 1 } as never)
+      prismaMock.supermarket.findFirst.mockResolvedValueOnce({ id: 42, name: 'Continente' } as never)
+      prismaMock.product.findFirst.mockResolvedValueOnce(null)
+      prismaMock.product.create.mockResolvedValueOnce({ id: 1, name: 'Leite', variants: [{ id: 1 }] } as never)
+      prismaMock.priceRecord.create.mockResolvedValueOnce({ id: 1 } as never)
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/compras',
+        headers: { 'x-api-key': 'test-api-key' },
+        payload,
+      })
+
+      expect(prismaMock.priceRecord.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { invoiceRef: 'FAT-001', supermarketId: 42 } })
+      )
+    })
+  })
+
+  describe('validação do payload', () => {
+    it('rejeita uma data com formato válido mas inexistente no calendário', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/compras',
+        headers: { 'x-api-key': 'test-api-key' },
+        payload: { ...payload, data: '32/13/2026' },
+      })
+
+      expect(res.statusCode).toBe(400)
+    })
+
+    it('aceita o 29 de fevereiro num ano bissexto', async () => {
+      mockTransaction()
+      prismaMock.user.findFirst.mockResolvedValueOnce({ id: 1 } as never)
+      prismaMock.supermarket.findFirst.mockResolvedValueOnce({ id: 1, name: 'Continente' } as never)
+      prismaMock.product.findFirst.mockResolvedValueOnce(null)
+      prismaMock.product.create.mockResolvedValueOnce({ id: 1, name: 'Leite', variants: [{ id: 1 }] } as never)
+      prismaMock.priceRecord.create.mockResolvedValueOnce({ id: 1 } as never)
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/compras',
+        headers: { 'x-api-key': 'test-api-key' },
+        payload: { ...payload, data: '29/02/2024' },
+      })
+
+      expect(res.statusCode).toBe(201)
+    })
+
+    it('rejeita o 29 de fevereiro num ano não bissexto', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/compras',
+        headers: { 'x-api-key': 'test-api-key' },
+        payload: { ...payload, data: '29/02/2026' },
+      })
+
+      expect(res.statusCode).toBe(400)
+    })
+
+    it('rejeita uma fatura com produtos a mais', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/compras',
+        headers: { 'x-api-key': 'test-api-key' },
+        payload: {
+          ...payload,
+          produtos: Array.from({ length: 501 }, (_, i) => ({ produto: `P${i}`, valor: 1 })),
+        },
+      })
+
+      expect(res.statusCode).toBe(400)
+    })
   })
 })

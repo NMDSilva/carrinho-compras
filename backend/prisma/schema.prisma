@@ -121,6 +121,15 @@ model PriceRecord {
   date          DateTime       @default(now())
   notes         String?
   createdAt     DateTime       @default(now())
+  // Preenchidos só pela ingestão de faturas (`/api/compras`): número da fatura
+  // e posição da linha dentro dela. Existem para a ingestão ser idempotente —
+  // uma repetição do workflow n8n (timeout + retry) reconhece a fatura já
+  // registada em vez de duplicar os preços todos. Ficam NULL nos registos
+  // criados à mão na app, e por isso o @@unique abaixo não os afeta (o
+  // Postgres não aplica índices únicos a linhas com NULL nas colunas do
+  // índice).
+  invoiceRef    String?
+  invoiceLine   Int?
   createdById   Int?
   updatedById   Int?
   product       Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -129,8 +138,15 @@ model PriceRecord {
   createdBy     User?          @relation("PriceCreatedBy", fields: [createdById], references: [id])
   updatedBy     User?          @relation("PriceUpdatedBy", fields: [updatedById], references: [id])
 
+  // Garantia de idempotência da ingestão de faturas ao nível da BD: mesmo que
+  // dois pedidos iguais passem em simultâneo pela verificação prévia em
+  // `compras.service.ts`, o segundo aborta aqui (P2002 → 409) em vez de
+  // duplicar a fatura. `invoiceLine` faz parte da chave para uma fatura poder
+  // ter a mesma linha repetida (dois artigos iguais lidos em separado).
+  @@unique([invoiceRef, supermarketId, invoiceLine])
   @@index([productId])
   @@index([variantId])
   @@index([supermarketId])
   @@index([date])
+  @@index([invoiceRef])
 }

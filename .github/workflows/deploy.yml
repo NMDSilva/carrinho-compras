@@ -73,12 +73,46 @@ jobs:
             set -e
             export NVM_DIR="$HOME/.nvm"
             if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh"; fi
-            echo "${{ secrets.ENV_FILE }}" > ~/carrinho-compras/backend/.env
+            # Heredoc com o delimitador citado ('ENV_EOF'): sem isto, um `$` ou
+            # uma crase dentro de um segredo (JWT_SECRET, POSTGRES_PASSWORD,
+            # N8N_API_KEY, RESEND_API_KEY) era expandido pelo bash da VM e o
+            # .env ficava com um valor diferente do secret, em silêncio.
+            cat <<'ENV_EOF' > ~/carrinho-compras/backend/.env
+            ${{ secrets.ENV_FILE }}
+            ENV_EOF
             chmod 600 ~/carrinho-compras/backend/.env
             cd ~/carrinho-compras/backend
             docker compose up -d
             NODE_OPTIONS="--max-old-space-size=512" npm ci --omit=dev --no-audit
             npx prisma generate
+
+            # Backup imediatamente antes das migrações. Não há rollback
+            # automático de migrations, e o único outro backup é o cron das
+            # 03:15 — uma migração destrutiva a meio do dia podia custar quase
+            # 24h de dados (AUDITORIA.md, 31/08/2026).
+            #
+            # O `docker compose up -d` acima devolve assim que os containers
+            # arrancam, não quando o Postgres já aceita ligações — daí a espera,
+            # senão o backup falhava por corrida e (com `set -e`) rebentava o
+            # deploy. Se o Postgres não responder de todo, salta-se o backup com
+            # aviso: não há nada para salvaguardar e a própria migração vai
+            # falhar a seguir. Já um dump que arranque e falhe é fatal de
+            # propósito — não se corre uma migração sem rede.
+            chmod +x ~/carrinho-compras/backend/scripts/backup-db.sh
+            PG_PRONTO=false
+            for i in $(seq 1 20); do
+              if docker compose exec -T postgres pg_isready -U carrinho -d carrinho_compras > /dev/null 2>&1; then
+                PG_PRONTO=true
+                break
+              fi
+              sleep 3
+            done
+            if [ "$PG_PRONTO" = true ]; then
+              ./scripts/backup-db.sh
+            else
+              echo "AVISO: o Postgres não aceitou ligações — backup pré-migração saltado."
+            fi
+
             npx prisma migrate deploy
             # "pm2 restart <nome>" e o fallback "pm2 start" podiam ambos falhar
             # quando o estado do pm2 fica inconsistente (dump.pm2 desatualizado
@@ -109,7 +143,7 @@ jobs:
               exit 1
             fi
 
-            chmod +x ~/carrinho-compras/backend/scripts/backup-db.sh
+            # (o chmod +x do backup-db.sh já foi feito antes das migrações)
             if command -v crontab >/dev/null 2>&1; then
               CRON_LINE="15 3 * * * cd ~/carrinho-compras/backend && ./scripts/backup-db.sh >> ~/backup-db.log 2>&1"
               (crontab -l 2>/dev/null | grep -vF 'backup-db.sh' || true; echo "$CRON_LINE") | crontab -

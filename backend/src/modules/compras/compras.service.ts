@@ -59,11 +59,38 @@ export async function registarCompra(body: ComprasRequest) {
       })
     }
 
+    // Idempotência: uma repetição do workflow n8n (timeout seguido de retry)
+    // não pode voltar a criar os preços todos da mesma fatura. Se já cá está,
+    // devolve-se o resultado da importação original em vez de duplicar.
+    // A verificação prévia resolve o caso real (retries sequenciais); o
+    // @@unique([invoiceRef, supermarketId, invoiceLine]) é a rede de segurança
+    // se dois pedidos iguais correrem em paralelo — o segundo aborta com P2002
+    // (409) em vez de duplicar.
+    const jaImportada = await tx.priceRecord.findMany({
+      where: { invoiceRef: body.fatura, supermarketId: supermarket.id },
+      orderBy: { invoiceLine: 'asc' },
+      include: { product: { select: { name: true } } },
+    })
+
+    if (jaImportada.length > 0) {
+      return {
+        supermarketId: supermarket.id,
+        productsCreated: 0,
+        pricesCreated: 0,
+        alreadyImported: true,
+        records: jaImportada.map((r) => ({
+          product: r.product?.name ?? '(produto entretanto removido)',
+          price: r.price,
+          priceRecordId: r.id,
+        })),
+      }
+    }
+
     let productsCreated = 0
     let pricesCreated = 0
     const records = []
 
-    for (const item of body.produtos) {
+    for (const [linha, item] of body.produtos.entries()) {
       // Find-or-create por texto exato (case-insensitive) do nome — se o
       // mesmo texto de fatura já apareceu antes, reutiliza o mesmo produto
       // placeholder e continua a acumular histórico de preço nele, mesmo
@@ -104,6 +131,8 @@ export async function registarCompra(body: ComprasRequest) {
           price: item.valor,
           quantity: 1,
           notes: `Registado através da importação da fatura ${body.fatura}`,
+          invoiceRef: body.fatura,
+          invoiceLine: linha,
           date,
           createdById: userId,
         },
@@ -120,6 +149,7 @@ export async function registarCompra(body: ComprasRequest) {
       supermarketId: supermarket.id,
       productsCreated,
       pricesCreated,
+      alreadyImported: false,
       records,
     }
   })
