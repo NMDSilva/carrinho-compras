@@ -86,7 +86,15 @@ jobs:
             # recursos na VM), mas uma base de dados à parte — nunca toca
             # nos dados de produção. O container já tem de estar a correr
             # (é gerido pelo deploy de produção).
-            docker exec carrinho-compras-db psql -U carrinho -tc \
+            #
+            # O `-d postgres` é obrigatório: sem ele o psql liga-se a uma base
+            # de dados com o nome do utilizador (`carrinho`), que não existe
+            # neste container (o compose cria `carrinho_compras`). Sem o `-d`,
+            # a verificação falhava sempre, o `createdb` corria sempre, e a
+            # partir do segundo deploy rebentava com "already exists" — o que
+            # aconteceu a 31/08/2026. A base `postgres` é criada pelo initdb e
+            # existe sempre.
+            docker exec carrinho-compras-db psql -U carrinho -d postgres -tAc \
               "SELECT 1 FROM pg_database WHERE datname = 'carrinho_compras_staging'" | grep -q 1 || \
               docker exec carrinho-compras-db createdb -U carrinho carrinho_compras_staging
 
