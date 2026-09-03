@@ -1,0 +1,62 @@
+name: Verificações da PR
+
+# Só corre em PRs para `main`. Não faz deploy nem toca na VM — é o gate que
+# decide se a PR pode ser merged. O deploy mantém as suas próprias verificações:
+# esta corre sobre a pré-visualização do merge, aquela sobre o que ficou mesmo
+# em `main`.
+on:
+  pull_request:
+    branches:
+      - main
+
+# Um push novo para a PR cancela a verificação anterior — não vale a pena gastar
+# minutos a validar um commit que já foi substituído.
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # O nome deste job é o "status check" exigido pela proteção do branch `main`.
+  # Mudá-lo obriga a atualizar a regra de proteção em Settings → Branches.
+  verificar:
+    name: verificar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      # O `shared` tem de ser buildado primeiro (backend e frontend importam o
+      # seu dist/), e o Prisma Client gerado — há módulos que importam
+      # `@prisma/client` diretamente e falham sem ele, mesmo com o Prisma
+      # mockado nos testes.
+      - name: Instalar dependências e build do shared
+        run: |
+          npm ci
+          npm run build -w shared
+          npm run db:generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes
+        run: npm test
+
+      - name: Type-check do frontend
+        run: npm run type-check -w frontend
+
+      # O deploy faz `tsc` como parte do build do backend, mas aqui não se
+      # builda — daí correr o type-check explicitamente.
+      - name: Type-check do backend
+        run: npx tsc --noEmit
+        working-directory: backend
