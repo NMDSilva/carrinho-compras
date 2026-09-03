@@ -82,6 +82,10 @@ Notas:
 - No tema claro `--background` é ligeiramente mais escuro que `--card` (fundo cinzento, cartões brancos), a mesma relação que o bloco `.dark` já tinha — é isso que permite usar `bg-background`/`bg-card` sem condicionais. `--muted` é um degrau abaixo de `--background` para o separador ativo dos `Tabs` (`bg-background` sobre `bg-muted`) continuar a destacar-se.
 - A paleta `brand-*` **foi removida** do `@theme`: a cor da marca vive só em `--primary`. `bg-brand-600` já não compila — é de propósito, falha no build em vez de passar despercebido.
 
+## Convenções do frontend — componentes `ui/`
+
+`frontend/src/components/ui/` é código gerado pelo shadcn-vue (`npx shadcn-vue add ...`), não escrito à mão. A regra `vue/require-default-prop` está desligada só para essa pasta no `eslint.config.mjs`: ali as props opcionais sem valor por omissão são intencionais (o `class` vai para o `cn()`, que trata o `undefined`, e o `variant`/`size` ficam por definir para o `cva` aplicar os seus próprios defaults). Nos nossos componentes a regra continua ativa.
+
 ## Variáveis de ambiente (backend/.env)
 
 `DATABASE_URL`, `POSTGRES_PASSWORD`, `PORT`, `NODE_ENV`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `N8N_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_URL`.

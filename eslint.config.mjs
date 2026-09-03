@@ -56,6 +56,17 @@ export default tseslint.config(
     },
   },
   {
+    // Componentes gerados pelo shadcn-vue (`npx shadcn-vue add ...`), não
+    // escritos à mão. Aqui props opcionais sem valor por omissão são
+    // intencionais: o `class` vai para o `cn()`, que trata o `undefined`, e o
+    // `variant`/`size` ficam por definir de propósito para o `cva` aplicar os
+    // seus próprios defaults.
+    files: ['frontend/src/components/ui/**/*.vue'],
+    rules: {
+      'vue/require-default-prop': 'off',
+    },
+  },
+  {
     rules: {
       '@typescript-eslint/no-unused-vars': [
         'warn',
