@@ -157,7 +157,7 @@ Ter os dois ambientes na mesma VM significa dois processos Node em simultâneo �
    sudo ln -s /etc/nginx/sites-available/carrinho-compras-staging /etc/nginx/sites-enabled/
    sudo nginx -t && sudo systemctl reload nginx
    ```
-3. Se o SSL/TLS da Cloudflare estiver em **Full (strict)**, expandir o certificado da origem, que hoje só cobre `carrinhodecompras.pt` e `www.`: `sudo certbot --nginx -d carrinhodecompras.pt -d www.carrinhodecompras.pt -d staging.carrinhodecompras.pt`. Em **Full** simples não é preciso. O certbot acrescenta o bloco 443 ao ficheiro do staging sem mexer no de produção.
+3. **Obrigatório, não opcional** — dar TLS ao vhost de staging: `sudo certbot --nginx -d staging.carrinhodecompras.pt`. O ficheiro do repo só declara `listen 80`, e a Cloudflare liga-se à origem por **443**: sem um bloco 443 para este hostname, o pedido não corresponde a nenhum server block e o nginx entrega-o ao bloco por omissão da 443 — o de **produção**. O sintoma engana: `staging.carrinhodecompras.pt` responde 200 e parece funcionar, mas está a servir a app e a base de dados de produção (aconteceu a 03/09/2026; detetado por os cabeçalhos virem os de produção, com HSTS e sem o `X-Robots-Tag` que o ficheiro de staging define). Certificado próprio para o subdomínio, de propósito, para o certbot não ter motivo para tocar no ficheiro de produção. Confirmar com `sudo nginx -T | grep -nE "listen|server_name"` que há um `listen 443 ssl` junto ao `server_name staging.carrinhodecompras.pt`.
 4. `FRONTEND_URL` no `ENV_FILE_STAGING` deve ser `https://staging.carrinhodecompras.pt` — só afeta os links dos emails de verificação/reposição.
 
 ## Tarefas em aberto / dívida técnica conhecida
