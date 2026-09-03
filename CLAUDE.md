@@ -143,6 +143,8 @@ Validada a servir o `dist/` localmente com estes cabeçalhos, exercitando login,
 
 Push para o branch `staging` dispara `.github/workflows/deploy-staging.yml` — mesmo gate (lint+test) e mesma VM da produção, mas isolado: pasta `~/carrinho-compras-staging`, processo pm2 `carrinho-compras-staging`, porta própria (definida no `.env` de staging). Reutiliza o **mesmo container Postgres** da produção (poupa recursos), mas numa base de dados à parte (`carrinho_compras_staging`, criada automaticamente pelo workflow se não existir) — nunca mexe nos dados de produção. Ao contrário do de produção, este workflow **não faz backup antes das migrações** (dados descartáveis, e o `backup-db.sh` faz dump da BD de produção).
 
+**Os dois ambientes partilham o pm2 da VM.** O deploy de produção apaga só o processo `carrinho-compras`, pelo nome — já foi `pm2 delete all`, que a partir de 31/08/2026 passou a apagar o staging a cada push para `main` (corrigido a 03/09). Qualquer processo pm2 novo na VM tem de ser tido em conta aqui.
+
 Ter os dois ambientes na mesma VM significa dois processos Node em simultâneo — vale a pena confirmar a folga de memória (`free -h`) antes de ligar o staging, sobretudo porque o `npm ci` do deploy já corre com `--max-old-space-size=512`.
 
 **Estado (31/08/2026)**: o secret `ENV_FILE_STAGING` está criado, o branch `staging` existe e o primeiro deploy correu bem — a base de dados `carrinho_compras_staging` foi criada e todas as migrations aplicadas de raiz, sem tocar em produção. A ordem importa e foi esta: **primeiro o secret, só depois o branch**; ao contrário, o push dispara o workflow, o `.env` na VM fica vazio e o processo pm2 arranca sem `DATABASE_URL` e morre (não afeta produção, mas obriga a limpar à mão).

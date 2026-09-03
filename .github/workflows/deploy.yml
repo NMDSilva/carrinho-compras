@@ -119,9 +119,14 @@ jobs:
             # a apontar para um id que já não existe, mas com outro processo
             # pm2-managed a correr o mesmo script sob id/nome diferente —
             # "Process 0 not found" seguido de "Script already launched").
-            # Esta VM só corre esta app (staging tem processo pm2 próprio,
-            # ainda por criar), por isso é seguro limpar tudo e arrancar de novo.
-            pm2 delete all 2>/dev/null || true
+            # Apaga-se só o processo de produção, pelo nome. Isto já foi
+            # `pm2 delete all`, seguro enquanto esta VM corria uma app só — mas
+            # o staging passou a existir a 31/08/2026 e cada deploy de produção
+            # apagava-o silenciosamente, deixando o vhost de staging a devolver
+            # 502 (detetado a 03/09/2026). O `delete` por nome resolve a mesma
+            # inconsistência de estado do pm2 para este processo, sem tocar nos
+            # outros.
+            pm2 delete carrinho-compras 2>/dev/null || true
             pm2 start dist/server.js --name carrinho-compras --cwd ~/carrinho-compras/backend
             pm2 save
 
