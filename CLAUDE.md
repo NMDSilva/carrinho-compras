@@ -94,7 +94,9 @@ Notas:
 
 ## nginx (VM)
 
-**A configuração do nginx vive só na VM**, em `/etc/nginx/sites-available/carrinho-compras` (com symlink em `sites-enabled/`). Não há cópia no repositório de propósito — existiu um `nginx.conf` de referência e foi removido em 31/08/2026 depois de causar uma paragem do site (ver abaixo). Nenhum workflow gere o nginx.
+**A configuração do nginx de produção vive só na VM**, em `/etc/nginx/sites-available/carrinho-compras` (com symlink em `sites-enabled/`). Não há cópia no repositório de propósito — existiu um `nginx.conf` de referência e foi removido em 31/08/2026 depois de causar uma paragem do site (ver abaixo). Nenhum workflow gere o nginx.
+
+(A exceção é [`deploy/nginx-staging.conf`](./deploy/nginx-staging.conf), que **é** para copiar: descreve um vhost de staging que ainda não existe na VM e é independente do de produção. A distinção é essa — um ficheiro que cria algo novo, não um que substitui o que já lá está.)
 
 O que essa config faz: serve a SPA a partir de `frontend/dist` com fallback para `index.html`, faz proxy de `/api/` para `localhost:3000`, e tem um bloco `listen 443 ssl` com os certificados Let's Encrypt, escrito e renovado pelo **certbot**.
 
@@ -149,7 +151,12 @@ Ter os dois ambientes na mesma VM significa dois processos Node em simultâneo �
 
 **Por fazer — vhost para `staging.carrinhodecompras.pt`** (opcional, só se quiseres clicar na app):
 1. DNS na Cloudflare: registo `staging`, CNAME para `carrinhodecompras.pt`, proxy ligado.
-2. Criar `/etc/nginx/sites-available/carrinho-compras-staging` como **ficheiro novo** (nunca editar o de produção — ver secção "nginx (VM)"), com `root` em `~/carrinho-compras-staging/frontend/dist`, proxy de `/api/` para `localhost:3001`, os mesmos cabeçalhos de segurança da produção e `X-Robots-Tag: noindex` para o staging não ser indexado. Ligar com `ln -s` para `sites-enabled/`, depois `nginx -t` e `systemctl reload nginx`.
+2. Instalar o vhost. O ficheiro está pronto em [`deploy/nginx-staging.conf`](./deploy/nginx-staging.conf) e chega à VM pelo rsync do deploy, em `~/carrinho-compras/deploy/nginx-staging.conf`. É um **ficheiro novo e independente** — nunca editar o de produção (ver secção "nginx (VM)"):
+   ```bash
+   sudo cp ~/carrinho-compras/deploy/nginx-staging.conf /etc/nginx/sites-available/carrinho-compras-staging
+   sudo ln -s /etc/nginx/sites-available/carrinho-compras-staging /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
 3. Se o SSL/TLS da Cloudflare estiver em **Full (strict)**, expandir o certificado da origem, que hoje só cobre `carrinhodecompras.pt` e `www.`: `sudo certbot --nginx -d carrinhodecompras.pt -d www.carrinhodecompras.pt -d staging.carrinhodecompras.pt`. Em **Full** simples não é preciso. O certbot acrescenta o bloco 443 ao ficheiro do staging sem mexer no de produção.
 4. `FRONTEND_URL` no `ENV_FILE_STAGING` deve ser `https://staging.carrinhodecompras.pt` — só afeta os links dos emails de verificação/reposição.
 
