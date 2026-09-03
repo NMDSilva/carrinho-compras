@@ -50,9 +50,17 @@ export async function buildApp() {
     contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
   })
 
-  await app.register(jwt, {
-    secret: process.env.JWT_SECRET ?? 'dev-secret',
-  })
+  // Sem fallback de propósito. Isto já caía silenciosamente para 'dev-secret' —
+  // um valor previsível, e agora público no histórico do repositório. Com ele,
+  // qualquer pessoa forja um token válido para qualquer utilizador, incluindo
+  // ADMIN. Falhar a arrancar é o comportamento correto: em produção a variável
+  // vem do .env, e nos testes de `tests/setup.ts`.
+  if (!process.env.JWT_SECRET) {
+    throw new Error(
+      'JWT_SECRET não está definida. Copia backend/.env.example para backend/.env e preenche-a.'
+    )
+  }
+  await app.register(jwt, { secret: process.env.JWT_SECRET })
 
   // Sem limite global — só nas rotas que o configuram explicitamente (login/registo).
   await app.register(rateLimit, { global: false })

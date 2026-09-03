@@ -86,7 +86,7 @@ Notas:
 
 `DATABASE_URL`, `POSTGRES_PASSWORD`, `PORT`, `NODE_ENV`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `N8N_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_URL`.
 
-- Se `JWT_SECRET` não estiver definido, a app cai silenciosamente para `'dev-secret'` — nunca publicar sem o definir explicitamente.
+- **`DATABASE_URL` e `JWT_SECRET` são obrigatórias: sem elas a app falha a arrancar**, com mensagem explícita. Ambas tiveram fallbacks embutidos no código (`'dev-secret'` e uma connection string com password real), removidos a 03/09/2026 quando o repositório passou a público — ver `AUDITORIA.md`. Não voltar a pôr credenciais ou segredos em código, nem como valor por omissão: ficam no histórico do git para sempre, e o repositório é público.
 - Se `N8N_API_KEY` não estiver definido, `/api/compras` responde 500 em vez de negar acesso.
 - Se `RESEND_API_KEY` não estiver definida, os emails de verificação/reposição ficam só registados na consola (`console.log`) em vez de enviados a sério — comportamento pensado para desenvolvimento, não usar em produção sem a definir.
 - `EMAIL_FROM` por omissão é `Carrinho de Compras <onboarding@resend.dev>` (domínio de teste do Resend, só entrega ao email da conta Resend) — em produção convém trocar para um endereço do domínio próprio (`noreply@carrinhodecompras.pt`), depois de verificar o domínio no Resend com os registos DNS que eles pedem.

@@ -8,7 +8,13 @@ services:
       POSTGRES_USER: carrinho
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      # Ligado a 127.0.0.1 de propósito. Com "5432:5432" o Docker publica em
+      # 0.0.0.0 (e [::]), ou seja em todas as interfaces da VM — a base de dados
+      # fica dependente só da firewall da cloud para não estar aberta à
+      # internet. O backend corre na própria VM, por isso nada precisa de acesso
+      # remoto. Para lhe chegar de fora, usar túnel SSH:
+      #   ssh -L 5432:localhost:5432 <user>@<host>
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

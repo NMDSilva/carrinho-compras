@@ -2,6 +2,14 @@
 
 Registo cumulativo de achados de auditorias (segurança, qualidade, dívida técnica). Cada achado fica marcado como `[ ]` (por resolver), `[~]` (correção pronta no repo mas a precisar de um passo manual fora dele) ou `[x]` (corrigido, com data e commit/PR se aplicável). Não apagar achados corrigidos — manter o histórico.
 
+## 03/09/2026 — repositório tornado público
+
+- [~] **Alto — código corrigido, falta rodar a password** — o repositório passou a público e expôs uma **credencial embutida no código**: `backend/src/shared/lib/prisma.ts` tinha `process.env.DATABASE_URL ?? 'postgresql://carrinho:carrinho_dev_2026@localhost:5432/carrinho_compras'`. Estava no estado atual e no histórico desde `8d44e9b`, portanto **remover o código não a apaga** — fica no histórico para sempre. O `app.ts` tinha o mesmo padrão com `JWT_SECRET ?? 'dev-secret'`: um segredo previsível e agora público que, se a variável faltasse em produção, permitiria forjar um token válido para qualquer utilizador, incluindo ADMIN.
+  - **Exposição real medida e contida**: o `docker-compose.yml` publicava a porta como `"5432:5432"`, ou seja em `0.0.0.0` e `[::]` (confirmado na VM com `ss -ltnp`). Mas a firewall da GCP bloqueia: `Test-NetConnection 35.255.195.237 -Port 5432` → `False`, com a 443 a dar `True` como controlo. A base de dados **não** está alcançável da internet; o risco fica contido a quem já tenha acesso à VM.
+  - **Correções aplicadas**: os dois fallbacks foram removidos — sem `DATABASE_URL` ou `JWT_SECRET` a app falha a arrancar com mensagem explícita (verificado). A porta passou a `"127.0.0.1:5432:5432"`, para deixar de depender só da firewall da cloud.
+  - **Por fazer, do lado do utilizador**: rodar a password do Postgres. A firewall contém o risco hoje, mas a credencial é pública e permanente no histórico — qualquer acesso futuro à VM, ou uma alteração de regra de firewall, torna-a utilizável. Implica novo valor, atualizar o secret `ENV_FILE` e recriar o container.
+  - **Falha do processo a registar**: a auditoria de 31/08 deu o repositório como "sem segredos versionados". Procurou ficheiros `.env` e padrões de chaves de API, mas não credenciais dentro de strings de ligação no código — e não olhou para o histórico, só para o estado atual. Uma verificação de segredos tem de cobrir as duas coisas.
+
 ## 03/09/2026 — nota de contexto
 
 O ambiente de **staging foi descontinuado** neste mesmo dia, por decisão do utilizador: numa app mantida por uma só pessoa, o custo de o manter não compensava o benefício. Os achados abaixo referentes a staging ficam registados na mesma — descrevem erros de raciocínio (pressupostos não revistos depois de mudar o sistema) que se aplicam a qualquer infraestrutura, não só àquela.
