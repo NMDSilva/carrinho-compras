@@ -10,7 +10,7 @@ Aplicação para registar e comparar preços de produtos entre supermercados. Mo
 - **`backend`** — API Fastify 5 + Prisma 7 (Postgres), autenticação JWT.
 - **`frontend`** — SPA Vue 3 (Composition API) + Vue Router + Pinia + Tailwind.
 
-Ver [`../CLAUDE.md`](../CLAUDE.md) para convenções técnicas, comandos e detalhes de deploy/staging/backups.
+Ver [`../CLAUDE.md`](../CLAUDE.md) para convenções técnicas, comandos e detalhes de deploy e backups.
 
 ## 2. Utilizadores e autenticação
 

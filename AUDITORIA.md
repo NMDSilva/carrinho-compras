@@ -2,6 +2,10 @@
 
 Registo cumulativo de achados de auditorias (segurança, qualidade, dívida técnica). Cada achado fica marcado como `[ ]` (por resolver), `[~]` (correção pronta no repo mas a precisar de um passo manual fora dele) ou `[x]` (corrigido, com data e commit/PR se aplicável). Não apagar achados corrigidos — manter o histórico.
 
+## 03/09/2026 — nota de contexto
+
+O ambiente de **staging foi descontinuado** neste mesmo dia, por decisão do utilizador: numa app mantida por uma só pessoa, o custo de o manter não compensava o benefício. Os achados abaixo referentes a staging ficam registados na mesma — descrevem erros de raciocínio (pressupostos não revistos depois de mudar o sistema) que se aplicam a qualquer infraestrutura, não só àquela.
+
 ## 03/09/2026
 
 - [x] **Alto** (corrigido em 03/09/2026) — **cada deploy de produção apagava o processo pm2 do staging.** O `deploy.yml` corria `pm2 delete all` antes de arrancar a produção, com o comentário a assumir explicitamente que "esta VM só corre esta app (staging tem processo pm2 próprio, ainda por criar)". Esse pressuposto deixou de ser verdade a 31/08/2026, quando o staging foi montado, e não foi revisto — a partir daí qualquer push para `main` deixava o staging em baixo em silêncio. Só ficou visível a 03/09 depois de o vhost de staging passar a servir de facto: antes, era o bloco de produção a responder no domínio de staging e a mascarar o problema com 200. **Correção:** `pm2 delete carrinho-compras` (por nome) em vez de `pm2 delete all` — resolve a mesma inconsistência de estado do pm2 para o processo de produção, sem tocar nos outros. O `deploy-staging.yml` já era dirigido (`pm2 restart carrinho-compras-staging || pm2 start ...`).

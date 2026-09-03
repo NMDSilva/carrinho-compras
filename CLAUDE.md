@@ -94,9 +94,7 @@ Notas:
 
 ## nginx (VM)
 
-**A configuração do nginx de produção vive só na VM**, em `/etc/nginx/sites-available/carrinho-compras` (com symlink em `sites-enabled/`). Não há cópia no repositório de propósito — existiu um `nginx.conf` de referência e foi removido em 31/08/2026 depois de causar uma paragem do site (ver abaixo). Nenhum workflow gere o nginx.
-
-(A exceção é [`deploy/nginx-staging.conf`](./deploy/nginx-staging.conf), que **é** para copiar: descreve um vhost de staging que ainda não existe na VM e é independente do de produção. A distinção é essa — um ficheiro que cria algo novo, não um que substitui o que já lá está.)
+**A configuração do nginx vive só na VM**, em `/etc/nginx/sites-available/carrinho-compras` (com symlink em `sites-enabled/`). Não há cópia no repositório de propósito — existiu um `nginx.conf` de referência e foi removido em 31/08/2026 depois de causar uma paragem do site (ver abaixo). Nenhum workflow gere o nginx.
 
 O que essa config faz: serve a SPA a partir de `frontend/dist` com fallback para `index.html`, faz proxy de `/api/` para `localhost:3000`, e tem um bloco `listen 443 ssl` com os certificados Let's Encrypt, escrito e renovado pelo **certbot**.
 
@@ -139,40 +137,14 @@ Validada a servir o `dist/` localmente com estes cabeçalhos, exercitando login,
 **Setup manual necessário na VM (ainda não feito por CI):**
 1. Instalar o pacote `cron` na VM se não estiver presente (`sudo apt install -y cron` em Debian/Ubuntu) — sem isto o passo de agendamento no deploy.yml só avisa e não falha o deploy, mas o backup não fica agendado.
 
-## Staging
-
-Push para o branch `staging` dispara `.github/workflows/deploy-staging.yml` — mesmo gate (lint+test) e mesma VM da produção, mas isolado: pasta `~/carrinho-compras-staging`, processo pm2 `carrinho-compras-staging`, porta própria (definida no `.env` de staging). Reutiliza o **mesmo container Postgres** da produção (poupa recursos), mas numa base de dados à parte (`carrinho_compras_staging`, criada automaticamente pelo workflow se não existir) — nunca mexe nos dados de produção. Ao contrário do de produção, este workflow **não faz backup antes das migrações** (dados descartáveis, e o `backup-db.sh` faz dump da BD de produção).
-
-**Os dois ambientes partilham o pm2 da VM.** O deploy de produção apaga só o processo `carrinho-compras`, pelo nome — já foi `pm2 delete all`, que a partir de 31/08/2026 passou a apagar o staging a cada push para `main` (corrigido a 03/09). Qualquer processo pm2 novo na VM tem de ser tido em conta aqui.
-
-Ter os dois ambientes na mesma VM significa dois processos Node em simultâneo — vale a pena confirmar a folga de memória (`free -h`) antes de ligar o staging, sobretudo porque o `npm ci` do deploy já corre com `--max-old-space-size=512`.
-
-**Estado (03/09/2026)**: staging operacional em `https://staging.carrinhodecompras.pt`, com vhost próprio e TLS. Isolamento confirmado: base de dados `carrinho_compras_staging` à parte (contagens de `User` diferentes das de produção, verificado na VM), backend próprio na porta 3001, processo pm2 próprio. Montado a 31/08 com o secret `ENV_FILE_STAGING` e o branch `staging`.
-
-Três problemas apareceram entre 31/08 e 03/09, todos por pressupostos não revistos e todos registados no `AUDITORIA.md` — vale a pena lê-los antes de mexer nesta área: o `psql` sem `-d` que fazia falhar todos os deploys a partir do segundo; o vhost sem `listen 443` que fazia o domínio de staging servir **produção** com um 200 enganador; e o `pm2 delete all` do deploy de produção, que apagava o processo de staging a cada push para `main`. A ordem importa e foi esta: **primeiro o secret, só depois o branch**; ao contrário, o push dispara o workflow, o `.env` na VM fica vazio e o processo pm2 arranca sem `DATABASE_URL` e morre (não afeta produção, mas obriga a limpar à mão).
-
-**Como aceder**: o backend responde em `localhost:3001` na VM (`curl localhost:3001/api/health`), ou via túnel SSH (`ssh -L 3001:localhost:3001 <user>@<host>`). Atenção: **o túnel só dá acesso à API**. O workflow builda o frontend para `~/carrinho-compras-staging/frontend/dist`, mas sem um vhost nginx nada serve esses ficheiros — sem vhost, o staging é testável com `curl` e não utilizável como aplicação.
-
-**Por fazer — vhost para `staging.carrinhodecompras.pt`** (opcional, só se quiseres clicar na app):
-1. DNS na Cloudflare: registo `staging`, CNAME para `carrinhodecompras.pt`, proxy ligado.
-2. Instalar o vhost. O ficheiro está pronto em [`deploy/nginx-staging.conf`](./deploy/nginx-staging.conf) e chega à VM pelo rsync do deploy, em `~/carrinho-compras/deploy/nginx-staging.conf`. É um **ficheiro novo e independente** — nunca editar o de produção (ver secção "nginx (VM)"):
-   ```bash
-   sudo cp ~/carrinho-compras/deploy/nginx-staging.conf /etc/nginx/sites-available/carrinho-compras-staging
-   sudo ln -s /etc/nginx/sites-available/carrinho-compras-staging /etc/nginx/sites-enabled/
-   sudo nginx -t && sudo systemctl reload nginx
-   ```
-3. **Obrigatório, não opcional** — dar TLS ao vhost de staging: `sudo certbot --nginx -d staging.carrinhodecompras.pt`. O ficheiro do repo só declara `listen 80`, e a Cloudflare liga-se à origem por **443**: sem um bloco 443 para este hostname, o pedido não corresponde a nenhum server block e o nginx entrega-o ao bloco por omissão da 443 — o de **produção**. O sintoma engana: `staging.carrinhodecompras.pt` responde 200 e parece funcionar, mas está a servir a app e a base de dados de produção (aconteceu a 03/09/2026; detetado por os cabeçalhos virem os de produção, com HSTS e sem o `X-Robots-Tag` que o ficheiro de staging define). Certificado próprio para o subdomínio, de propósito, para o certbot não ter motivo para tocar no ficheiro de produção. Confirmar com `sudo nginx -T | grep -nE "listen|server_name"` que há um `listen 443 ssl` junto ao `server_name staging.carrinhodecompras.pt`.
-4. `FRONTEND_URL` no `ENV_FILE_STAGING` deve ser `https://staging.carrinhodecompras.pt` — só afeta os links dos emails de verificação/reposição.
-
 ## Tarefas em aberto / dívida técnica conhecida
 
-- **Staging**: confirmado em 2026-08-30 que o branch `staging` ainda não existe e o secret `ENV_FILE_STAGING` ainda não está criado no GitHub — ver secção "Staging" acima para os passos.
 - **Achados de auditorias de segurança/qualidade**: registados em [`AUDITORIA.md`](./AUDITORIA.md), com checkbox por achado (por resolver / corrigido). Consultar esse ficheiro antes de propor trabalho novo em áreas já auditadas, e marcar os achados como corrigidos ali (não aqui) quando resolvidos.
 
 ## Convenções do repositório
 
-- Branches: `feature/<descrição>`. `staging` é um branch especial de longa duração — ver secção "Staging".
+- Branches: `feature/<descrição>`, criados a partir de `main` e integrados de volta em `main`. Não há ambiente intermédio: cada push para `main` vai direto para produção, com o `lint`+`test` do workflow como único gate. (Existiu um branch `staging` com ambiente próprio entre 31/08 e 03/09/2026; foi descontinuado por não compensar numa app mantida por uma só pessoa — o histórico dos problemas que deu está no `AUDITORIA.md`.)
 - Mensagens de commit: estilo Conventional Commits, escritas em português.
 - Formatação: só Prettier (sem ponto-e-vírgula, aspas simples, indentação de 2 espaços) — ver `.prettierrc`.
-- O CI (`.github/workflows/deploy.yml`) builda e faz deploy para GCP em cada push para `main`, correndo primeiro `lint` e `test` como gate antes do build. Depois do `pm2 restart`, faz healthcheck a `/api/health` (10 tentativas, 3s) — se a app não responder, o job falha e mostra os últimos logs do `pm2` (não há rollback automático de código/migrations, só falha visível em vez de silenciosa). Tem `concurrency: group: deploy-production` (`cancel-in-progress: false`) — pushes seguidos para `main` ficam em fila em vez de correr o script de SSH em paralelo (dois deploys a mexer ao mesmo tempo em `npm ci`/`pm2 restart`/migrations na mesma VM seria um risco real). `deploy-staging.yml` tem o mesmo mecanismo, grupo à parte.
+- O CI (`.github/workflows/deploy.yml`) builda e faz deploy para GCP em cada push para `main`, correndo primeiro `lint` e `test` como gate antes do build. Depois do `pm2 restart`, faz healthcheck a `/api/health` (10 tentativas, 3s) — se a app não responder, o job falha e mostra os últimos logs do `pm2` (não há rollback automático de código/migrations, só falha visível em vez de silenciosa). Tem `concurrency: group: deploy-production` (`cancel-in-progress: false`) — pushes seguidos para `main` ficam em fila em vez de correr o script de SSH em paralelo (dois deploys a mexer ao mesmo tempo em `npm ci`/`pm2 restart`/migrations na mesma VM seria um risco real).
 - Toda a documentação, especificações, comentários no código e mensagens de commit devem ser escritos em **português de Portugal (pt-PT)**.
