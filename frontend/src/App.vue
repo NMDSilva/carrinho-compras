@@ -57,7 +57,12 @@ function logout() {
 
 <template>
   <!-- Página de login: sem sidebar -->
-  <RouterView v-if="route.name === 'login'" />
+  <!-- Rotas públicas (login, verificar/recuperar/repor password) não têm sessão
+       iniciada, logo não faz sentido mostrarem a navegação nem o bloco de
+       utilizador. A condição segue o `meta.public` do router e não uma lista de
+       nomes: com `route.name === 'login'` as outras três apareciam com a barra
+       lateral, e qualquer rota pública nova voltaria a cair no mesmo erro. -->
+  <RouterView v-if="route.meta.public" />
 
   <div v-else class="min-h-screen bg-background">
     <!-- Sidebar (desktop) -->
