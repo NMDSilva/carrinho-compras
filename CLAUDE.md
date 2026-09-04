@@ -56,6 +56,10 @@ Corre `npm run db:generate` antes de testar/buildar o backend se ainda não o ti
 
 ## Convenções do frontend — cores e tema
 
+**Persistência do tema.** A fonte de verdade é o `User.theme` no backend, que segue o utilizador entre dispositivos. O `localStorage` (`theme`) é a cache local, escrita por `src/lib/theme.ts` sempre que a preferência é aplicada, e lida no arranque por [`frontend/public/theme.js`](./frontend/public/theme.js) — um script **bloqueante** no `<head>`, antes dos estilos, para a classe `.dark` já estar no `<html>` quando a página pinta. Sem isso haveria um flash claro em cada carregamento, porque o bundle é um módulo e só corre depois do HTML processado. Vive num ficheiro e não inline pela mesma razão do `analytics.js`: a CSP usa `script-src 'self'` sem `'unsafe-inline'`.
+
+O watcher do `App.vue` **não toca no tema quando não há sessão** (`if (!theme) return`). É o que permite ao ecrã de login e às páginas de recuperação de password respeitarem a escolha do utilizador: sem essa guarda, o watcher forçava o tema claro e desfazia o que o `theme.js` tinha aplicado.
+
 A app tem tema claro/escuro por utilizador (campo `User.theme`, `"light"`/`"dark"`, escolhido em `/perfil` via `PATCH /api/auth/me`; `App.vue` aplica a classe `.dark` ao `<html>` a partir de `auth.user.theme`). Todo o UI é retemizado automaticamente, sem nenhum par `dark:` escrito no markup, porque **nenhuma view usa cores Tailwind fixas** — só tokens semânticos definidos em `frontend/src/style.css` (`:root` para claro, `.dark` para escuro, expostos como classes pelo bloco `@theme inline`).
 
 **Regra**: nunca escrever `text-gray-*`, `bg-gray-*`, `bg-white`, `text-white`, `border-gray-*`, `text-red-*`, `bg-yellow-*`, etc. no markup — essas classes não respondem à classe `.dark` e ficam ilegíveis num dos temas. Usar sempre:
