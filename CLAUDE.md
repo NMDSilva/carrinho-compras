@@ -28,7 +28,7 @@ Corre `npm run db:generate` antes de testar/buildar o backend se ainda não o ti
 
 ## Stack
 
-- **backend**: Fastify 5, Prisma 7 (`@prisma/adapter-pg`, Postgres), `fastify-type-provider-zod` (os schemas Zod do `shared` fazem a validação + geram o OpenAPI em `/docs`), autenticação JWT (`@fastify/jwt`).
+- **backend**: Fastify 5, Prisma 7 (`@prisma/adapter-pg`, Postgres — **ficar no 7 até o 8.0.0 estável sair**: o Prisma publicou o 8 sob a etiqueta `latest` ainda em release candidate, por isso o `npm i prisma@latest` que a CLI sugere a cada build instala um RC; ver `AUDITORIA.md`), `fastify-type-provider-zod` (os schemas Zod do `shared` fazem a validação + geram o OpenAPI em `/docs`), autenticação JWT (`@fastify/jwt`).
 - **frontend**: Vue 3 (Composition API) + Vue Router 4 + Pinia + Vite, Tailwind CSS, `ofetch` como cliente HTTP.
 - **shared**: `@carrinho/shared` — schemas Zod e tipos de entidades usados tanto pelo backend (validação) como pelo frontend (tipos). Fonte única de verdade para o contrato da API.
 - O gestor de pacotes é **apenas npm** (workspaces) — sem pnpm/yarn, sem lock files nos subpacotes.
