@@ -36,17 +36,16 @@ function temBarraLateral(wrapper: ReturnType<typeof mount>) {
   return wrapper.findAll('a').some((a) => a.text().includes('Dashboard'))
 }
 
+function definirUtilizador(theme: 'light' | 'dark' = 'light') {
+  const auth = useAuthStore()
+  auth.user = { id: 1, name: 'Ana', email: 'ana@example.com', role: 'USER', theme }
+  return auth
+}
+
 describe('App — layout por rota', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    const auth = useAuthStore()
-    auth.user = {
-      id: 1,
-      name: 'Ana',
-      email: 'ana@example.com',
-      role: 'USER',
-      theme: 'light',
-    }
+    definirUtilizador()
   })
 
   // Antes de 04/09/2026 a condição era `route.name === 'login'`, por isso as
@@ -70,5 +69,60 @@ describe('App — layout por rota', () => {
     const wrapper = await montarEm(caminho)
 
     expect(temBarraLateral(wrapper)).toBe(true)
+  })
+})
+
+// O tema vive no `User.theme` (backend, segue entre dispositivos) mas é
+// espelhado no localStorage, para valer também antes de haver sessão — no ecrã
+// de login e nas páginas de recuperação de password.
+describe('App — tema', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    document.documentElement.classList.remove('dark')
+  })
+
+  it('aplica o tema do utilizador e guarda-o no localStorage', async () => {
+    definirUtilizador('dark')
+
+    await montarEm('/')
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(localStorage.getItem('theme')).toBe('dark')
+  })
+
+  // Este é o caso que estava partido: sem sessão, o watcher forçava o tema
+  // claro e desfazia o que o public/theme.js tinha aplicado no arranque.
+  it('não desfaz o tema escuro no ecrã de login, sem sessão iniciada', async () => {
+    localStorage.setItem('theme', 'dark')
+    document.documentElement.classList.add('dark') // o que o public/theme.js faz
+
+    await montarEm('/login')
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+  })
+
+  it('mantém o tema depois do logout', async () => {
+    const auth = definirUtilizador('dark')
+    await montarEm('/')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+
+    auth.logout()
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(localStorage.getItem('theme')).toBe('dark')
+  })
+
+  it('volta ao claro quando o utilizador muda a preferência', async () => {
+    const auth = definirUtilizador('dark')
+    await montarEm('/')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+
+    auth.user = { ...auth.user!, theme: 'light' }
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+    expect(localStorage.getItem('theme')).toBe('light')
   })
 })

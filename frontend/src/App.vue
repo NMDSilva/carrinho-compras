@@ -17,6 +17,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { Toaster } from '@/components/ui/sonner'
+import { aplicarTema } from '@/lib/theme'
 
 const route = useRoute()
 const router = useRouter()
@@ -36,15 +37,19 @@ const adminItems = [
   { to: '/admin/utilizadores', label: 'Utilizadores', icon: UsersIcon },
 ]
 
-// Aplica a preferência de tema do utilizador ao <html> assim que fica
-// disponível (fetchMe(), no router guard, corre antes de qualquer rota
-// protegida renderizar — mas o próprio App.vue já está montado nesse
-// momento, por isso o tema só "salta" para o correto depois do fetch, não
-// há forma barata de evitar esse flash sem SSR/script bloqueante).
+// Sincroniza o tema do utilizador com o `<html>` e com o localStorage assim que
+// a sessão fica disponível (login, fetchMe, ou mudança em /perfil).
+//
+// O `if (!theme) return` é essencial: sem sessão — ecrã de login, recuperação de
+// password, ou logout — não se toca no tema. Antes fazia-se
+// `toggle('dark', theme === 'dark')` sem esta guarda, o que forçava o tema claro
+// nessas páginas e desfazia o que o `public/theme.js` já tinha aplicado a partir
+// do localStorage.
 watch(
   () => auth.user?.theme,
   (theme) => {
-    document.documentElement.classList.toggle('dark', theme === 'dark')
+    if (!theme) return
+    aplicarTema(theme)
   },
   { immediate: true }
 )
@@ -56,7 +61,6 @@ function logout() {
 </script>
 
 <template>
-  <!-- Página de login: sem sidebar -->
   <!-- Rotas públicas (login, verificar/recuperar/repor password) não têm sessão
        iniciada, logo não faz sentido mostrarem a navegação nem o bloco de
        utilizador. A condição segue o `meta.public` do router e não uma lista de
