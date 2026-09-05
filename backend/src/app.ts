@@ -47,7 +47,8 @@ export async function buildApp() {
     // CSP teria de ser afinada para a Swagger UI conseguir correr (scripts/estilos
     // inline) — como /docs só existe fora de produção, mais simples desligar a CSP
     // aí e manter a predefinição estrita do helmet em produção, onde /docs não existe.
-    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+    contentSecurityPolicy:
+      process.env.NODE_ENV === 'production' ? undefined : false,
   })
 
   // Sem fallback de propósito. Isto já caía silenciosamente para 'dev-secret' —
@@ -135,9 +136,19 @@ export async function buildApp() {
           case 'P2002':
             return reply.status(409).send({ error: 'Registo já existe' })
           case 'P2003':
-            return reply
-              .status(400)
-              .send({ error: 'Referência inválida — o registo relacionado não existe' })
+            return reply.status(400).send({
+              error: 'Referência inválida — o registo relacionado não existe',
+            })
+          // Transação expirada. Sem este caso caía no 500 genérico, que não
+          // diz nada a quem chama nem a quem lê os logs do n8n — foi preciso ir
+          // aos logs da VM para descobrir que a ingestão de faturas rebentava
+          // aqui (05/09/2026). Nada foi escrito: a transação faz rollback, por
+          // isso repetir o pedido é seguro.
+          case 'P2028':
+            return reply.status(503).send({
+              error:
+                'A operação demorou demasiado tempo e foi revertida. Tenta novamente.',
+            })
         }
       }
       if (error.statusCode) {
