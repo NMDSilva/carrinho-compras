@@ -129,8 +129,13 @@ jobs:
             HEALTH_PORT=$(grep -m1 '^PORT=' .env | cut -d= -f2)
             HEALTH_PORT=${HEALTH_PORT:-3000}
             echo "A aguardar que a app fique saudável em :${HEALTH_PORT}..."
+            # 20×3s (60s), não 10×3s (30s): com o @sentry/node integrado (09/09/2026)
+            # o arranque ficou mais lento — mais dependências para o Node
+            # resolver/carregar — e numa VM já ocupada com o npm ci/backup/migrate
+            # anteriores isso chegou a passar dos 30s antigos por pouco. A app
+            # arrancava bem, só que o deploy falhava a marcá-la como tal.
             HEALTHY=false
-            for i in $(seq 1 10); do
+            for i in $(seq 1 20); do
               if curl -sf "http://localhost:${HEALTH_PORT}/api/health" > /dev/null; then
                 echo "Healthcheck OK"
                 HEALTHY=true
