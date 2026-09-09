@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import './shared/lib/sentry'
 import { buildApp } from './app'
 
 async function start() {
