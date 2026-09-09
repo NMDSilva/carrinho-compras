@@ -13,6 +13,7 @@ import {
 import { ZodError } from 'zod'
 import { Prisma } from '@prisma/client'
 
+import Sentry from './shared/lib/sentry'
 import prisma from './shared/lib/prisma'
 import authRoutes from './modules/auth/auth.routes'
 import usersRoutes from './modules/users/users.routes'
@@ -154,6 +155,10 @@ export async function buildApp() {
       if (error.statusCode) {
         return reply.status(error.statusCode).send({ error: error.message })
       }
+      // Só o 500 genérico vai para o Sentry — os ramos acima são erros
+      // esperados (validação, conflitos, timeouts já mitigados) e só gerariam
+      // ruído.
+      Sentry.captureException(error)
       reply.status(500).send({ error: 'Erro interno do servidor' })
     }
   )

@@ -94,13 +94,14 @@ Notas:
 
 ## Variáveis de ambiente (backend/.env)
 
-`DATABASE_URL`, `POSTGRES_PASSWORD`, `PORT`, `NODE_ENV`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `N8N_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_URL`.
+`DATABASE_URL`, `POSTGRES_PASSWORD`, `PORT`, `NODE_ENV`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `N8N_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_URL`, `SENTRY_DSN`.
 
 - **`DATABASE_URL` e `JWT_SECRET` são obrigatórias: sem elas a app falha a arrancar**, com mensagem explícita. Ambas tiveram fallbacks embutidos no código (`'dev-secret'` e uma connection string com password real), removidos a 03/09/2026 quando o repositório passou a público — ver `AUDITORIA.md`. Não voltar a pôr credenciais ou segredos em código, nem como valor por omissão: ficam no histórico do git para sempre, e o repositório é público.
 - Se `N8N_API_KEY` não estiver definido, `/api/compras` responde 500 em vez de negar acesso.
 - Se `RESEND_API_KEY` não estiver definida, os emails de verificação/reposição ficam só registados na consola (`console.log`) em vez de enviados a sério — comportamento pensado para desenvolvimento, não usar em produção sem a definir.
 - `EMAIL_FROM` por omissão é `Carrinho de Compras <onboarding@resend.dev>` (domínio de teste do Resend, só entrega ao email da conta Resend) — em produção convém trocar para um endereço do domínio próprio (`noreply@carrinhodecompras.pt`), depois de verificar o domínio no Resend com os registos DNS que eles pedem.
 - `FRONTEND_URL` por omissão é `http://localhost:5173` — usado para montar os links de verificação/reposição enviados por email (`{FRONTEND_URL}/verificar-email?token=...`); em produção tem de ser `https://carrinhodecompras.pt`.
+- **`SENTRY_DSN`** (opcional): se não estiver definida, `backend/src/shared/lib/sentry.ts` não inicializa o SDK e os erros continuam só nos logs da consola/pm2 — mesmo padrão do `RESEND_API_KEY`. Quando definida, o handler de erros global em `app.ts` envia para o Sentry só o 500 genérico (não os erros esperados: validação, `P2025`/`P2002`/`P2003`, `P2028`), com `environment` a acompanhar o `NODE_ENV`. **Este valor não está no `ENV_FILE` do secret de deploy** — para chegar a produção, tem de ser acrescentado a esse secret no GitHub (Settings → Secrets → Actions → `ENV_FILE`).
 
 ## nginx (VM)
 
@@ -123,7 +124,7 @@ Para alterar a config: editar o ficheiro na VM acrescentando só as linhas em fa
 Ficam no `location /` e **não** ao nível do `server`, para não duplicarem os que o `@fastify/helmet` já devolve em `/api/` (dois `X-Frame-Options` deixariam o browser a escolher). Atenção ao comportamento do nginx: `add_header` dentro de um `location` descarta os herdados do `server`, por isso qualquer cabeçalho novo tem de ser acrescentado aí.
 
 ```nginx
-add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com; upgrade-insecure-requests" always;
+add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://o4512052131201024.ingest.de.sentry.io; upgrade-insecure-requests" always;
 add_header X-Frame-Options "DENY" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "no-referrer" always;
@@ -137,6 +138,8 @@ Duas decisões deliberadas nesta CSP:
 - **Com `'unsafe-inline'` em `style-src`** — inevitável: o Vue e o reka-ui (Popover/Select/Dialog) posicionam-se com estilos inline.
 
 Validada a servir o `dist/` localmente com estes cabeçalhos, exercitando login, tabelas, dialogs, combobox e Select: zero eventos `securitypolicyviolation`.
+
+**Pendente aplicar na VM**: o `connect-src` acima já inclui `https://o4512052131201024.ingest.de.sentry.io` (adicionado quando o Sentry foi integrado no frontend, `@sentry/vue` em `frontend/src/lib/sentry.ts`), mas a config da VM não se atualiza sozinha — sem editar lá e recarregar o nginx, o browser bloqueia os eventos do Sentry por CSP (silenciosamente, sem afetar mais nada do site).
 
 ## Backups
 
